@@ -20,4 +20,12 @@ Support for multiple types of parameter files and user-defined command-line argu
 Explaining check_data_synda.py
 ==============================
 This script performs a check of the current/past downloads
-and looks into the transfer.log file for debugging. 
+and looks into the transfer.log file for debugging.
+
+Explaining cache_BADC.py
+========================
+This script takes in the same parameter data file as above but it does the following:
+- look up the available files on the BADC ESGF node;
+- points the user to the physical location of each file on /badc;
+- creates a cache (framecache.txt) and a missing data file (missingcache.txt).
+Runexample: python cache_BADC.py -p permetrics.txt or with command line arguments. 
