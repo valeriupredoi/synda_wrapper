@@ -2,7 +2,7 @@
 
 """
 
-Script that searches for data using a vakid ESGF node, and that builds a 
+Script that searches for data using a valid ESGF node, and that builds a 
 local cache using the results of the search. Currently for BADC archive only.
 Can be generalized for any other archive.
 
@@ -29,8 +29,8 @@ __author__ = "Valeriu Predoi <valeriu.predoi@ncas.ac.uk>"
 def usage():
   msg = """\
 This is a flexible tool to generate locacal caches from ESGF nodes.
-This makes use of synda for querying the local ESGF node and possibly downloads 
-data if files are not found locally.
+This makes use of synda for querying the local ESGF node (BADC only for now).
+It will write a cache file pointing to local physical paths for data.
 For queries, email valeriu.predoi@ncas.ac.uk. Have fun!
 
 Usage:
@@ -164,7 +164,7 @@ def synda_search(model_data,varname,server):
     cachefile.save()
 
 # ---- synda download
-def write_cache(searchoutput,varname,year1_model,year2_model,outfile,outfile2):
+def write_cache(searchoutput,varname,year1_model,year2_model,header,outfile,outfile2):
     """
     This function takes the standard search output from synda
     and parses it to see if/what files exist locally
@@ -219,7 +219,7 @@ def write_cache(searchoutput,varname,year1_model,year2_model,outfile,outfile2):
                     # ---- and write cache
                     if os.path.exists(filepath_complete):
                         with open(outfile, 'a') as file:
-                            file.write(filepath_complete + ' ' + out.split()[1] + out.split()[2] + '\n')
+                            file.write(header + ' ' + filepath_complete + ' ' + out.split()[1] + out.split()[2] + '\n')
                             file.close()
                         print('----------------------------------------------------')
                     else:
@@ -228,22 +228,48 @@ def write_cache(searchoutput,varname,year1_model,year2_model,outfile,outfile2):
                         except IOError as ioex:
                             print 'err message:', os.strerror(ioex.errno)
                             with open(outfile2, 'a') as file:
-                                file.write('ERROR1: ' + os.strerror(ioex.errno) + ' ' + filepath_complete + '\n')
+                                file.write(header + ' ' + 'ERROR ' + os.strerror(ioex.errno) + ' ' + filepath_complete + '\n')
                                 file.close()
                 else:
                     print('something went wrong with parsing the data entry, calling this a non-existent file')
                     with open(outfile2, 'a') as file:
-                        file.write('ERROR2: ' + file_name_complete + ' could not be found' + '\n')
+                        file.write(header + ' ' + 'ERROR ' + file_name_complete + ' could not be found' + '\n')
                         file.close()
     else:
         print >> sys.stderr, "Could not find database with the specified parameters on BADC"
-        print('---------- writing missing data file: missing_cache.txt ------------')
         return 0
 
+def fix_duplicate_entries(outfile):
+    """
+    simple fast function to eliminate duplicate entries
+    from a cache file
+    """
     # ---- fixing the cache file for duplicates
     ar = np.genfromtxt(outfile, dtype=str,delimiter='\n')
     nar = np.unique(ar)
     st(outfile,nar,fmt='%s')
+
+def print_stats(outfile1,outfile2):
+    """
+    small function to print some stats at the end
+    """
+    if os.path.exists(outfile1) and os.path.exists(outfile2):
+        ar1 = np.genfromtxt(outfile1, dtype=str,delimiter='\n')
+        ar2 = np.genfromtxt(outfile2, dtype=str,delimiter='\n')
+        pd = [p for p in ar2 if p.split()[2]+p.split()[3]=='Permissiondenied']
+        print('\n########################################################')
+        print('netcdf_badc_cache: %i individual .nc files cached' % len(ar1))
+        print('missing_badc_cache: %i individual .nc files NOT cached:' % len(ar2))
+        print('                   - Permission denied: %i files' % len(pd))
+        print('                   - Missing files and databases: %i files' % int(int(len(ar2))-int(len(pd))))
+        print('########################################################\n')
+    elif os.path.exists(outfile1) and os.path.exists(outfile2) is False:
+        ar1 = np.genfromtxt(outfile1, dtype=str,delimiter='\n')
+        print('\n########################################################')
+        print('netcdf_badc_cache: %i individual .nc files cached' % len(ar1))
+        print('########################################################\n')
+    elif os.path.exists(outfile1) is False:
+        print('Shoot! No cache written...something went wrong here!') 
 
 # -------------------------------------------------------------------------
 #      Parse the command line options.
@@ -379,8 +405,8 @@ pfile.write(command_string + "\n")
 pfile.close()
 
 # ---- Write cache file ---- #
-pfile2 = 'framecache.txt'
-pfile3 = 'missingcache.txt'
+pfile2 = 'netcdf_badc_cache.txt'
+pfile3 = 'missing_netcdf_badc_cache.txt'
 
 if params_file:
     paramfile, paramfile_extension = os.path.splitext(params_file)
@@ -446,8 +472,13 @@ if params_file:
         # duplicates in the lists
         ar = np.genfromtxt(params_file, dtype=str, delimiter='\n')
         nar = np.unique(ar)
+        # ---- really hard for genfromtxt to handle one-liner files, shit
         prfile = 'prepended_' + params_file
-        st(prfile,nar,fmt='%s')
+        if len(nar) == 1:
+            with open(prfile, 'a') as file:
+                file.write(nar)
+        else:
+            st(prfile,nar,fmt='%s')
         itemlist = lt(prfile,dtype=str)
         lenitemlist = len(itemlist)
         print('\n---------------------------------------------------------------------')
@@ -456,20 +487,36 @@ if params_file:
         # FIXME bolted-on parallelization is easy to implement at this stage
         for item in itemlist:
             v1 = item[7]
+            header = item[0] + '_'+ item[1] + '_' + item[2]\
+                     + '_' + item[3] + '_' + item[4] + '_' + item[5]\
+                     + '_' + item[6] + '_' + item[7]
             model_data = item[0] + ' '+ item[1] + ' ' + item[2]\
-                 + ' ' + item[3] + ' ' + item[4]
+                         + ' ' + item[3] + ' ' + item[4]
             print(model_data + '\n')
             yr1 = int(item[5])
             yr2 = int(item[6])
             outpt = synda_search(model_data,v1,data_server)
-            s = write_cache(outpt,v1,yr1,yr2,pfile2,pfile3)
+            s = write_cache(outpt,v1,yr1,yr2,header,pfile2,pfile3)
             if s == 0:
                 with open(pfile3, 'a') as file:
-                    file.write('ERROR3: ' + model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + v1 + ' missing database' + '\n')
+                    file.write(header + ' ' + 'ERROR '  + model_data + ' '\
+                               + str(yr1) + ' ' + str(yr2) + ' ' + v1\
+                               + ' missing database' + '\n')
                     file.close()
+        # ---- clean-up
+        if os.path.exists(pfile2):
+            fix_duplicate_entries(pfile2)
+        if os.path.exists(pfile3):
+            fix_duplicate_entries(pfile3)
+        print_stats(pfile2,pfile3)
+        print('DONE\n')
 elif userVars:
+    # ---- user command line arguments parsed here
     for vi in vpars:
         print('Looking at variable %s' % vi)
+        header = fpars[0] + '_'+ fpars[1] + '_' + fpars[2]\
+                 + '_' + fpars[3] + '_' + fpars[4] + '_' + str(fpars[5])+ '_' + str(fpars[6])\
+                 + '_' + vi
         model_data = fpars[0] + ' '+ fpars[1] + ' ' + fpars[2]\
                  + ' ' + fpars[3] + ' ' + fpars[4]
         print(model_data + '\n')
@@ -479,5 +526,12 @@ elif userVars:
         s = write_cache(outpt,vi,yr1,yr2,pfile2,pfile3)
         if s == 0:
             with open(pfile3, 'a') as file:
-                file.write('ERROR3: ' + model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + v1 + ' missing database' + '\n')
+                file.write(header + ' ' + 'ERROR3: ' + model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + v1 + ' missing database' + '\n')
                 file.close()
+    # ---- clean-up
+    if os.path.exists(pfile2):
+        fix_duplicate_entries(pfile2)
+    if os.path.exists(pfile3):
+        fix_duplicate_entries(pfile3)
+    print_stats(pfile2,pfile3)
+    print('DONE\n')
