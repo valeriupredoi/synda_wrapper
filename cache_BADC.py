@@ -43,6 +43,7 @@ Usage:
   -h, --help                  Display this message and exit
   --user-input                Flag for user defined file and variables parameters (to be inputted at command line)
                               This option is REQUIRED if --params-file is not present
+  --direct                    Flag to use direct parsing of database files without synda
   --fileparams                If --user-input is used, this serial option passes one data file argument at a time
                               If --user-input is used, this serial option is REQUIRED
                               e.g. --fileparams CMIP5 --fileparams MPI-ESM-LR --fileparams Amon  --fileparams historical
@@ -194,50 +195,146 @@ def write_cache(searchoutput,varname,year1_model,year2_model,header,outfile,outf
     if len(entries)>0:
         for entry in entries:
             file_name = entry.split()[3]
-            time_range = file_name.split('_')[-1].strip('.nc')
-            time1 = time_range.split('-')[0]
-            y1 = datetime.strptime(time1, '%Y%m')
-            year1 = y1.year
-            time2 = time_range.split('-')[1]
-            y2 = datetime.strptime(time2, '%Y%m')           
-            year2 = y2.year
-            if time_handling(year1, year1_model, year2, year2_model) is True:
-                file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
-                true_file_name = file_name_complete.split('.')[-2]+'.'+file_name_complete.split('.')[-1]
-                print('Matching file: %s' % true_file_name)
-                # get the most recent file from database
-                # synda will always list the most recent database first
-                synda_search = which_synda('synda') + ' search -f -l 1 ' + true_file_name
-                proc = subprocess.Popen(synda_search, stdout=subprocess.PIPE, shell=True)
-                (out, err) = proc.communicate()
-                if len(out.split()) > 2:
-                    fc = out.split()[3]
-                    file_name_complete_final = ".".join(fc.split('.')[:10]) + '.' + varname + '.' + ".".join(fc.split('.')[10:])
-                    filepath_complete = '/badc/cmip5/data/c' + file_name_complete_final.replace('.','/').strip('/nc') + '.nc'
-                    print(filepath_complete)
-                    # ---- perform a local check file exists in /badc
-                    # ---- and write cache
-                    if os.path.exists(filepath_complete):
-                        with open(outfile, 'a') as file:
-                            file.write(header + ' ' + filepath_complete + ' ' + out.split()[1] + out.split()[2] + '\n')
-                            file.close()
-                        print('----------------------------------------------------')
+            if header.split('_')[1] == file_name.split('.')[3]:
+                time_range = file_name.split('_')[-1].strip('.nc')
+                time1 = time_range.split('-')[0]
+                y1 = datetime.strptime(time1, '%Y%m')
+                year1 = y1.year
+                time2 = time_range.split('-')[1]
+                y2 = datetime.strptime(time2, '%Y%m')           
+                year2 = y2.year
+                if time_handling(year1, year1_model, year2, year2_model) is True:
+                    file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
+                    true_file_name = file_name_complete.split('.')[-2]+'.'+file_name_complete.split('.')[-1]
+                    print('Matching file: %s' % true_file_name)
+                    # get the most recent file from database
+                    # synda will always list the most recent database first
+                    synda_search = which_synda('synda') + ' search -f -l 1 ' + true_file_name
+                    proc = subprocess.Popen(synda_search, stdout=subprocess.PIPE, shell=True)
+                    (out, err) = proc.communicate()
+                    if len(out.split()) > 2:
+                        fc = out.split()[3]
+                        file_name_complete_final = ".".join(fc.split('.')[:10]) + '.' + varname + '.' + ".".join(fc.split('.')[10:])
+                        filepath_complete_0 = '/badc/cmip5/data/c' + file_name_complete_final.replace('.','/').strip('/nc') + '.nc'
+                        filepath_complete = "/".join(filepath_complete_0.split('/')[0:13]) + '/latest/' + "/".join(filepath_complete_0.split('/')[14:])
+                        print(filepath_complete)
+                        # ---- perform a local check file exists in /badc
+                        # ---- and write cache
+                        crf = filepath_complete.split('/')[-1]
+                        # ---- writing only files that match experiment type
+                        if header.split('_')[1] == crf.split('_')[2]:
+                            if os.path.exists(filepath_complete):
+                                with open(outfile, 'a') as file:
+                                    file.write(header + ' ' + filepath_complete + ' ' + out.split()[1] + out.split()[2] + '\n')
+                                    file.close()
+                                print('----------------------------------------------------')
+                            else:
+                                try:
+                                    s = open(filepath_complete)
+                                except IOError as ioex:
+                                    print 'err message:', os.strerror(ioex.errno)
+                                    print('Trying to look one directory up...')
+                                    probl = "/".join(filepath_complete.split('/')[0:-1])
+                                    fnd = 'find ' + probl +  ' -follow -iname "*.nc"'
+                                    proc = subprocess.Popen(fnd, stdout=subprocess.PIPE, shell=True)
+                                    (out, err) = proc.communicate()
+                                    prs = []
+                                    for s in out.split('\n')[0:-1]:
+                                        ssp = s.split('/')
+                                        av = ssp[-1]
+                                        # --- date handling
+                                        time_range = av.split('_')[-1].strip('.nc')
+                                        time1 = time_range.split('-')[0]
+                                        y1 = datetime.strptime(time1, '%Y%m')
+                                        year1 = y1.year
+                                        time2 = time_range.split('-')[1]
+                                        y2 = datetime.strptime(time2, '%Y%m')
+                                        year2 = y2.year
+                                        if time_handling(year1, yr1, year2, yr2) is True:
+                                            if os.path.exists(s):
+                                                prs.append(s)
+                                                print('Found rogue file: %s' % s)
+                                                with open(outfile, 'a') as file:
+                                                    file.write(header + ' ' + s + '\n')
+                                    if len(prs)==0:
+                                        print('No files found...')
+                                        with open(outfile2, 'a') as file:
+                                            file.write(header + ' ' + 'ERROR ' + os.strerror(ioex.errno) + ' ' + filepath_complete + '\n')
+                                            file.close()
                     else:
-                        try:
-                            s = open(filepath_complete)
-                        except IOError as ioex:
-                            print 'err message:', os.strerror(ioex.errno)
-                            with open(outfile2, 'a') as file:
-                                file.write(header + ' ' + 'ERROR ' + os.strerror(ioex.errno) + ' ' + filepath_complete + '\n')
-                                file.close()
-                else:
-                    print('something went wrong with parsing the data entry, calling this a non-existent file')
-                    with open(outfile2, 'a') as file:
-                        file.write(header + ' ' + 'ERROR ' + file_name_complete + ' could not be found' + '\n')
-                        file.close()
+                        print('something went wrong with parsing the data entry, calling this a non-existent file')
+                        with open(outfile2, 'a') as file:
+                            file.write(header + ' ' + 'ERROR ' + file_name_complete + ' could not be found' + '\n')
+                            file.close()
     else:
         print >> sys.stderr, "Could not find database with the specified parameters on BADC"
         return 0
+
+def write_cache_direct(params_file):
+    """
+    Function that does direct parsing of available database files and establishes
+    the paths to the needed files; makes use of pre-generated database files of
+    name example: all_badc_netcdf_CMIP5_MPI-ESM-LR.txt
+    that contain paths to ALL the nc files in that particular database
+    Usage is straightforward; output is a cache file
+
+    If in need, a user can pre-generate database list files by executing e.g.:
+    find /badc/cmip5/data/cmip5/output1/BCC/bcc-csm1-1 -follow -type f -iname "*.nc" > all_badc_netcdf_bcc-csm1-1.txt
+ 
+    Versioning is controlled by finding the /latest dir in the database
+
+    """ 
+    outfile = 'netcdf_badc_cache_direct.txt'
+    car = np.genfromtxt(params_file, dtype=str, delimiter='\n')
+    # ---- eliminate duplicates from input file, if any
+    nar = np.unique(car)
+    # ---- really hard for genfromtxt to handle one-liner files, shit
+    prfile = 'prepended_' + params_file
+    if len(nar) == 1:
+        with open(prfile, 'a') as file:
+            file.write(nar)
+    else:
+        st(prfile,nar,fmt='%s')
+    itemlist = lt(prfile,dtype=str)
+    lenitemlist = len(itemlist)
+    for item in itemlist:
+        # ---- read database files
+        # These files have been generated using find as:
+        # find /badc/cmip5/data/cmip5/output1/BCC/bcc-csm1-1 -follow -type f -iname "*.nc" > all_badc_netcdf_bcc-csm1-1.txt
+        arname = 'all_badc_netcdf_' + item[0] + '_' + item[1] + '.txt'
+        if os.path.exists(arname):
+            ar = np.genfromtxt(arname, dtype=str, delimiter='\n')
+            var = item[7]
+            header = item[0] + '_'+ item[1] + '_' + item[2]\
+                         + '_' + item[3] + '_' + item[4] + '_' + item[5]\
+                         + '_' + item[6] + '_' + item[7]
+            filehead = var + '_'+ item[2] + '_' + item[1]\
+                         + '_' + item[3] + '_' + item[4]
+            yr1 = int(item[5])
+            yr2 = int(item[6])
+            for s in ar:
+                ssp = s.split('/')
+                av = ssp[-1]
+                if filehead == "_".join(av.split('_')[0:-1]):
+                    if ssp[-3] == 'latest':
+                        # --- date handling
+                        time_range = av.split('_')[-1].strip('.nc')
+                        time1 = time_range.split('-')[0]
+                        y1 = datetime.strptime(time1, '%Y%m')
+                        year1 = y1.year
+                        time2 = time_range.split('-')[1]
+                        y2 = datetime.strptime(time2, '%Y%m')
+                        year2 = y2.year
+                        if time_handling(year1, yr1, year2, yr2) is True:
+                            if os.path.exists(s):
+                                with open(outfile, 'a') as file:
+                                    file.write(header + ' ' + s + '\n')
+        else:
+            print >> sys.stderr, "Skipping...Could not find file:", arname
+    if os.path.exists(outfile):
+        fix_duplicate_entries(outfile)
+    else:
+        print >> sys.stderr, "Something went wrong: could not write cache file"
 
 def fix_duplicate_entries(outfile):
     """
@@ -278,6 +375,7 @@ def print_stats(outfile1,outfile2):
 # ---- Initialise command line argument variables.
 params_file       = None
 userVars          = False
+direct            = False
 fpars             = []
 vpars             = []
 
@@ -289,6 +387,7 @@ longop = [
    "help",
    "params-file=",
    "user-input",
+   "direct",
    "fileparams=",
    "uservars="
 ]
@@ -316,6 +415,9 @@ for o, a in opts:
     elif o in ("--user-input"):
       userVars = True
       command_string = command_string + ' --user-input '
+    elif o in ("--direct"):
+      direct = True
+      command_string = command_string + ' --direct '
     elif o in ("--fileparams"):
         fpars.append(a)
         command_string = command_string + ' --fileparams ' + a
@@ -374,30 +476,32 @@ else:
     print >> sys.stdout,"Var(s)    :", vpars[0]
 print >> sys.stdout
 
-# ---- Get the synda path or exit here
-print('Looking up synda executable...')
-if which_synda('synda') is not None:
-    print >> sys.stdout, "Synda found...OK" 
-    print >> sys.stdout, which_synda('synda')
-else:
-    print >> sys.stderr, "No synda executable found in path. Exiting."
-    sys.exit(1)
+if direct is False:
+# ---- we are using synda
+    # ---- Get the synda path or exit here
+    print('Looking up synda executable...')
+    if which_synda('synda') is not None:
+        print >> sys.stdout, "Synda found...OK" 
+        print >> sys.stdout, which_synda('synda')
+    else:
+        print >> sys.stderr, "No synda executable found in path. Exiting."
+        sys.exit(1)
 
-# ---- Have us some information from the synda configuration file
-# ---- one can add more info if needed, currently just data server
-print('\n---------------------------------------------')
-print('Information about synda configuration:')
-print('---------------------------------------------')
-synda_conf_file = which_synda('synda').rsplit('/',2)[0] + '/conf/sdt.conf'
-print ('Synda conf file %s' % synda_conf_file)
-with open(synda_conf_file, 'r') as file:
-    for line in file:
-        if line.split('=')[0]=='indexes':
-            data_server = line.split('=')[1]
-            print('Data server: %s' % data_server.split()[0])
-            if data_server.split()[0] != 'esgf-index1.ceda.ac.uk':
-                print >> sys.stderr, "Web server not set to ESGF-BADC! Contact your local support, exiting..."
-                sys.exit(1)
+    # ---- Have us some information from the synda configuration file
+    # ---- one can add more info if needed, currently just data server
+    print('\n---------------------------------------------')
+    print('Information about synda configuration:')
+    print('---------------------------------------------')
+    synda_conf_file = which_synda('synda').rsplit('/',2)[0] + '/conf/sdt.conf'
+    print ('Synda conf file %s' % synda_conf_file)
+    with open(synda_conf_file, 'r') as file:
+        for line in file:
+            if line.split('=')[0]=='indexes':
+                data_server = line.split('=')[1]
+                print('Data server: %s' % data_server.split()[0])
+                if data_server.split()[0] != 'esgf-index1.ceda.ac.uk':
+                    print >> sys.stderr, "Web server not set to ESGF-BADC! Contact your local support, exiting..."
+                    sys.exit(1)
 
 # ---- Write ASCII file holding cache_BADC.py command.
 pfile = open('cache_BADC.param','w')
@@ -470,46 +574,49 @@ if params_file:
         ###############################################################
         # ---- prepend the original params file to eliminate
         # duplicates in the lists
-        ar = np.genfromtxt(params_file, dtype=str, delimiter='\n')
-        nar = np.unique(ar)
-        # ---- really hard for genfromtxt to handle one-liner files, shit
-        prfile = 'prepended_' + params_file
-        if len(nar) == 1:
-            with open(prfile, 'a') as file:
-                file.write(nar)
+        if direct is False:
+            ar = np.genfromtxt(params_file, dtype=str, delimiter='\n')
+            nar = np.unique(ar)
+            # ---- really hard for genfromtxt to handle one-liner files, shit
+            prfile = 'prepended_' + params_file
+            if len(nar) == 1:
+                with open(prfile, 'a') as file:
+                    file.write(nar)
+            else:
+                st(prfile,nar,fmt='%s')
+            itemlist = lt(prfile,dtype=str)
+            lenitemlist = len(itemlist)
+            print('\n---------------------------------------------------------------------')
+            print('We parsed a TXT param file. We need data files for %i data bases: ' % lenitemlist)
+            print('-----------------------------------------------------------------------')
+            # FIXME bolted-on parallelization is easy to implement at this stage
+            for item in itemlist:
+                v1 = item[7]
+                header = item[0] + '_'+ item[1] + '_' + item[2]\
+                         + '_' + item[3] + '_' + item[4] + '_' + item[5]\
+                         + '_' + item[6] + '_' + item[7]
+                model_data = item[0] + ' '+ item[1] + ' ' + item[2]\
+                             + ' ' + item[3] + ' ' + item[4]
+                print(model_data + '\n')
+                yr1 = int(item[5])
+                yr2 = int(item[6])
+                outpt = synda_search(model_data,v1,data_server)
+                s = write_cache(outpt,v1,yr1,yr2,header,pfile2,pfile3)
+                if s == 0:
+                    with open(pfile3, 'a') as file:
+                        file.write(header + ' ' + 'ERROR '  + model_data + ' '\
+                                   + str(yr1) + ' ' + str(yr2) + ' ' + v1\
+                                   + ' missing database' + '\n')
+                        file.close()
+            # ---- clean-up
+            if os.path.exists(pfile2):
+                fix_duplicate_entries(pfile2)
+            if os.path.exists(pfile3):
+                fix_duplicate_entries(pfile3)
+            print_stats(pfile2,pfile3)
+            print('DONE\n')
         else:
-            st(prfile,nar,fmt='%s')
-        itemlist = lt(prfile,dtype=str)
-        lenitemlist = len(itemlist)
-        print('\n---------------------------------------------------------------------')
-        print('We parsed a TXT param file. We need data files for %i data bases: ' % lenitemlist)
-        print('-----------------------------------------------------------------------')
-        # FIXME bolted-on parallelization is easy to implement at this stage
-        for item in itemlist:
-            v1 = item[7]
-            header = item[0] + '_'+ item[1] + '_' + item[2]\
-                     + '_' + item[3] + '_' + item[4] + '_' + item[5]\
-                     + '_' + item[6] + '_' + item[7]
-            model_data = item[0] + ' '+ item[1] + ' ' + item[2]\
-                         + ' ' + item[3] + ' ' + item[4]
-            print(model_data + '\n')
-            yr1 = int(item[5])
-            yr2 = int(item[6])
-            outpt = synda_search(model_data,v1,data_server)
-            s = write_cache(outpt,v1,yr1,yr2,header,pfile2,pfile3)
-            if s == 0:
-                with open(pfile3, 'a') as file:
-                    file.write(header + ' ' + 'ERROR '  + model_data + ' '\
-                               + str(yr1) + ' ' + str(yr2) + ' ' + v1\
-                               + ' missing database' + '\n')
-                    file.close()
-        # ---- clean-up
-        if os.path.exists(pfile2):
-            fix_duplicate_entries(pfile2)
-        if os.path.exists(pfile3):
-            fix_duplicate_entries(pfile3)
-        print_stats(pfile2,pfile3)
-        print('DONE\n')
+            write_cache_direct(params_file)
 elif userVars:
     # ---- user command line arguments parsed here
     for vi in vpars:
