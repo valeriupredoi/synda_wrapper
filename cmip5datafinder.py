@@ -393,6 +393,11 @@ def get_drs(dir1, sdir, ic, model, latest_dir):
         gdrs = dir1 + sdir\
               + '/' + ic + '/' + model[3] + '/mon/seaIce/OImon/' + model[4]\
               + latest_dir + model[7] + '/'
+    # aerosols
+    elif model[2] == 'aero':
+        gdrs = dir1 + sdir\
+              + '/' + ic + '/' + model[3] + '/mon/aerosol/aero/' + model[4]\
+              + latest_dir + model[7] + '/'
     else:
         print('Could not establish custom DRS...')
         gdrs = dir1 + sdir + '/' + ic + '/' + model[3] + '/' + model[2] + '/*/*/' + model[4]\
@@ -1039,6 +1044,7 @@ for d in db:
                     if os.path.exists(errorfile):
                         fix_duplicate_entries(errorfile)
                     print_stats(pfile4,pfile5)
+
                     # final cache merging and cleanup
                     if os.path.exists(pfile2) and os.path.exists(pfile4):
                         # create a composite file using caches from sever and synda
@@ -1047,12 +1053,22 @@ for d in db:
                         final_cache(params_file,compf,nm)
                         print_final_stats(nm)
                     else:
+                        # looks like synda didnt find anything extra
                         if os.path.exists(pfile2):
                             cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
                             proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
                             (out, err) = proc.communicate()
                             final_cache(params_file,pfile2,nm)
                             print_final_stats(nm)
+                        else:
+                            # looks like there is nothing in local but synda found extra
+                            if os.path.exists(pfile4):
+                                cpc = 'cp ' + pfile4 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
+                                proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                                (out, err) = proc.communicate()
+                                final_cache(params_file,pfile4,nm)
+                                print_final_stats(nm)
+                    # in case synda missed some databases
                     if os.path.exists(pfile5):
                         fix_duplicate_entries(pfile5)
                         cpc = 'cp ' + pfile5 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
