@@ -142,29 +142,33 @@ def time_handling(year1, year1_model, year2, year2_model):
     year1_model - the needed start year of data
     year2 - the last year in files
     year2_model - the needed last year of data
-    we compromise on months
+    WARNINGS:
+    we reduce our analysis only to years
 
     """
     # model interval < data interval / file
+    # model requirements completely within data stretch
     if year1 <= int(year1_model) and year2 >= int(year2_model):
-        return True
+        return True,True
     # model interval > data interval / file
+    # data stretch completely within model requirements
     elif year1 >= int(year1_model) and year2 <= int(year2_model):
-        return True
+        return True,False
+    # left/right overlaps and complete misses
     elif year1 <= int(year1_model) and year2 <= int(year2_model):
         # data is entirely before model
         if year2 <= int(year1_model):
-            return False
+            return False,False
         # data overlaps to the left
         elif year2 >= int(year1_model):
-            return True
+            return True,False
     elif year1 >= int(year1_model) and year2 >= int(year2_model):
         # data is entirely after model
         if year1 >= int(year2_model):
-            return False
+            return False,False
         # data overlaps to the right
         elif year1 <= int(year2_model):
-            return True
+            return True,False
 
 # ---- function to handle various date formats
 def date_handling(time1,time2):
@@ -277,7 +281,7 @@ def write_cache_via_synda(searchoutput,varname,year1_model,year2_model,header,ou
                 time2 = time_range.split('-')[1]
                 year1 = date_handling(time1,time2)[0]
                 year2 = date_handling(time1,time2)[1]
-                if time_handling(year1, year1_model, year2, year2_model) is True:
+                if time_handling(year1, year1_model, year2, year2_model)[0] is True:
                     file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                     true_file_name = file_name_complete.split('.')[-2]+'.'+file_name_complete.split('.')[-1]
                     print('Matching file: %s' % true_file_name)
@@ -322,7 +326,7 @@ def write_cache_via_synda(searchoutput,varname,year1_model,year2_model,header,ou
                                         time2 = time_range.split('-')[1]
                                         year1 = date_handling(time1,time2)[0]
                                         year2 = date_handling(time1,time2)[1]
-                                        if time_handling(year1, yr1, year2, yr2) is True:
+                                        if time_handling(year1, yr1, year2, yr2)[0] is True:
                                             if os.path.exists(s):
                                                 prs.append(s)
                                                 print('Found rogue file: %s' % s)
@@ -491,12 +495,34 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                 time2 = time_range.split('-')[1]
                 year1 = date_handling(time1,time2)[0]
                 year2 = date_handling(time1,time2)[1]
-                if time_handling(year1, yr1, year2, yr2) is True:
+                # case where the required data completely overlaps
+                # available data
+                if time_handling(year1, yr1, year2, yr2)[0] is True and time_handling(year1, yr1, year2, yr2)[1] is True:
                     if os.path.exists(s):
                         with open(outfile, 'a') as file:
                             file.write(header + ' ' + s + '\n')
                         if verbose is True:
                             print('Cached file: ' + s)
+                    else:
+                        with open(outfile2, 'a') as file:
+                            file.write(header + ' ERROR-MISSING' + '\n')
+                        if verbose is True:
+                            print('Missing: ' +  header)
+                # case where the required data is not fully found
+                # ie incomplete data 
+                # what we want to do here is cache what we have available
+                # but also let synda know there is missing data, maybe
+                # she can find it...just maybe
+                # also we must make sure she doesnt download what we already have
+                if time_handling(year1, yr1, year2, yr2)[0] is True and time_handling(year1, yr1, year2, yr2)[1] is False:
+                    if os.path.exists(s):
+                        with open(outfile, 'a') as file:
+                            file.write(header + ' ' + s + '\n')
+                        if verbose is True:
+                            print('Cached file: ' + s)
+                        sfn = s.split('/')[-1]
+                        with open(outfile2, 'a') as file:
+                            file.write(header + ' INCOMPLETE ' + sfn + '\n')
                     else:
                         with open(outfile2, 'a') as file:
                             file.write(header + ' ERROR-MISSING' + '\n')
@@ -534,8 +560,8 @@ def print_stats(outfile1,outfile2):
         else:
             m = len(ar2)
         print('\n########################################################')
-        print('Found and cached: %i individual .nc files cached' % f)
-        print('Missing         : %i individual datasets NOT cached' % m)
+        print('  Found and cached: %i individual .nc files cached' % f)
+        print('Missing/incomplete: %i individual datasets NOT cached' % m)
         print('########################################################\n')
     elif os.path.exists(outfile1) and os.path.exists(outfile2) is False:
         ar1 = np.genfromtxt(outfile1, dtype=str,delimiter='\n')
@@ -550,7 +576,7 @@ def print_stats(outfile1,outfile2):
         print('Shoot! No cache written...something went wrong here!') 
 
 # ---- synda download
-def synda_dll(searchoutput,varname,year1_model,year2_model,header,outfile,outfile2,download=False,dryrunOn=False,verbose=False):
+def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outfile2,download=False,dryrunOn=False,verbose=False):
     """
     This function takes the standard search output from synda
     and parses it to see if/what files need to be downloaded
@@ -586,7 +612,7 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,outfile,outfil
                 time2 = time_range.split('-')[1]
                 year1 = date_handling(time1,time2)[0]
                 year2 = date_handling(time1,time2)[1]
-                if time_handling(year1, year1_model, year2, year2_model) is True:
+                if time_handling(year1, year1_model, year2, year2_model)[0] is True:
                     if label=='done':
                         file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                         filepath_complete = '/sdt/data/c' + file_name_complete.replace('.','/').strip('/nc') + '.nc'
@@ -601,31 +627,33 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,outfile,outfil
                         if download is True:
                             file_name_new = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                             filepath_new = '/sdt/data/c' + file_name_new.replace('.','/').strip('/nc') + '.nc'
-                            if dryrunOn is True:
-                                if verbose is True:
-                                    print('Download enabled in dryrun mode...')
-                                    print('Synda found file: ' + file_name)
-                                    print('If installed, full path would be: ' + filepath_new)
-                                with open(outfile, 'a') as file:
-                                    file.write(header + ' ' + filepath_new + ' ' + 'NOT-YET-INSTALLED' + '\n')
-                                    # no download, dryrun only #
-                            else:
-                                synda_install = which_synda('synda') +  ' install ' + file_name
-                                proc = subprocess.Popen(synda_install, stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
-                                dll ='\n'
-                                (out, err) = proc.communicate(input=dll)
-                                if err is not None:
-                                    print >> sys.stderr, "An error has occured while starting the download:"
-                                    print >> sys.stderr, err
-                                    sys.exit(1)
-                                else:
+                            fn = filepath_new.split('/')[-1]
+                            if fn not in D[header]:
+                                if dryrunOn is True:
+                                    if verbose is True:
+                                        print('Download enabled in dryrun mode...')
+                                        print('Synda found file: ' + file_name)
+                                        print('If installed, full path would be: ' + filepath_new)
                                     with open(outfile, 'a') as file:
-                                        file.write(header + ' ' + filepath_new + ' ' + 'INSTALLED' + '\n')
-                                if verbose is True:
-                                    print('Download enabled in full install mode...')
-                                    print('Downloading file: ' + file_name)
-                                    print('Full path: ' + filepath_new)
-                                    # yes download #
+                                        file.write(header + ' ' + filepath_new + ' ' + 'NOT-YET-INSTALLED' + '\n')
+                                        # no download, dryrun only #
+                                else:
+                                    synda_install = which_synda('synda') +  ' install ' + file_name
+                                    proc = subprocess.Popen(synda_install, stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
+                                    dll ='\n'
+                                    (out, err) = proc.communicate(input=dll)
+                                    if err is not None:
+                                        print >> sys.stderr, "An error has occured while starting the download:"
+                                        print >> sys.stderr, err
+                                        sys.exit(1)
+                                    else:
+                                        with open(outfile, 'a') as file:
+                                            file.write(header + ' ' + filepath_new + ' ' + 'INSTALLED' + '\n')
+                                    if verbose is True:
+                                        print('Download enabled in full install mode...')
+                                        print('Downloading file: ' + file_name)
+                                        print('Full path: ' + filepath_new)
+                                        # yes download #
                 else:
                     if verbose is True:
                         print('Missing: ' + header)
@@ -666,7 +694,7 @@ def final_cache(parfile,ofile1,finalfile):
     Function that generates the final user-friendly
     single cache file; this can easily be used
     in various analyses; file legend:
-    Database | data_status | available_data
+    Database | data_status | Percent complete | available_data
     ---------------------------------------------
     CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus (complete,incomplete or missing) [file_list, if available]
     """
@@ -697,12 +725,76 @@ def final_cache(parfile,ofile1,finalfile):
             y2 = int(b.split()[6])
             # let's see how we do with time
             if len(tt) > 0:
-                if y1 >= min(tt) and y2 <= max(tt):
-                    ff.write(header + ' complete ' + str(hh) + '\n')
+                if get_overlap(tt,y1,y2)[1] == 1:
+                    # we have contiguous time
+                    if get_overlap(tt,y1,y2)[0] == 1:
+                        ff.write(header + ' complete 1.0 ' + str(hh) + '\n')
+                    else:
+                        fdt = get_overlap(tt,y1,y2)[0]
+                        ff.write(header + ' incomplete ' + '%.2f' % fdt + ' ' + str(hh) + '\n')
                 else:
-                    ff.write(header + ' incomplete ' + str(hh) + '\n')
+                    # we have gaps
+                    if get_overlap(tt,y1,y2)[0] == 1:
+                        ff.write(header + ' complete(DATAGAPS) 1.0 ' + str(hh) + '\n')
+                    else:
+                        fdt = get_overlap(tt,y1,y2)[0]
+                        ff.write(header + ' incomplete(DATAGAPS) ' + '%.2f' % fdt + ' ' + str(hh) + '\n')
             else:
                 ff.write(header + ' missing' + '\n')
+
+#---- function that returns the amount of overlap
+# between needed data and available data
+def get_overlap(tt, my1, my2):
+    """
+    function that returns the amount of overlap
+    between needed data and available data
+    Returns a fractional float
+    li: list of years from data (1-dim, even number of elements)
+    my1,my2: required model years
+    """
+    nt = len(tt)
+    my = float(my2 - my1)
+    if nt == 2:
+        # single file, no gaps in data
+        if min(tt) >= my1 and max(tt) <= my2:
+            # completely inside
+            df = (max(tt) - min(tt))/my
+        elif min(tt) >= my1 and max(tt) >= my2:
+            # right plus
+            df = (my2 - min(tt))/my
+        elif min(tt) <= my1 and max(tt) <= my2:
+            # left plus
+            df = (max(tt) - my1)/my
+        elif my1 >= min(tt) and my2 <= max(tt):
+            df = 1
+        return df,1
+    else:
+        #multiple files, checking for gaps in data
+        b = max(tt) - min(tt)
+        el = [tt[i] - tt[i-1] for i in range(1,nt)]
+        if sum(el) == b:
+            # multiple files, no gaps in data
+            if min(tt) >= my1 and max(tt) <= my2:
+                # completely inside
+                df = (max(tt) - min(tt))/my
+            elif min(tt) >= my1 and max(tt) >= my2:
+                # right plus
+                df = (my2 - min(tt))/my
+            elif min(tt) <= my1 and max(tt) <= my2:
+                # left plus
+                df = (max(tt) - my1)/my
+            elif my1 >= min(tt) and my2 <= max(tt):
+                df = 1
+            return df,1
+        else:
+            # there are gaps!!
+            # but we dont deal with them here
+            df = 1
+            return df,2
+
+        
+    #dtl = [tt[i] - tt[i-1] for i in range(1,nt)]
+    
 
 def print_final_stats(sfile):
     """
@@ -717,11 +809,21 @@ def print_final_stats(sfile):
     c = [a for a in lff if a.split()[1] == 'complete']
     ic = [b for b in lff if b.split()[1] == 'incomplete']
     mi = [d for d in lff if d.split()[1] == 'missing']
+    gc = [a for a in lff if a.split()[1] == 'complete(DATAGAPS)']
+    gic = [b for b in lff if b.split()[1] == 'incomplete(DATAGAPS)']
+    prcc = [float(a.split()[2]) for a in lff if a.split()[1] == 'incomplete']
     print('---------------------------')
-    print('Total needed databases: %i' % len(lff))
-    print('    Complete databases: %i' % len(c))
-    print('  Incomplete databases: %i' % len(ic))
-    print('     Missing databases: %i' % len(mi))
+    if len(gc) != 0 and len(gic) != 0:
+        print('============================')
+        print('WARNING: THERE ARE DATA GAPS!')
+        print('============================')
+    print('     Total needed databases: %i' % len(lff))
+    print('         Complete databases: %i' % len(c))
+    print('       Incomplete databases: %i' % len(ic))
+    print('          Missing databases: %i' % len(mi))
+    print('     Complete dbs with gaps: %i' % len(gc))
+    print('   Incomplete dbs with gaps: %i' % len(gic))
+    print('Avg coverage for incomplete: %.2f' % np.mean(prcc))
     print('---------------------------')
 
 # ---- synda check download
@@ -877,7 +979,10 @@ if verbose is True:
            - missing_cache_cmip5_synda_[SERVER].txt synda missing files
 
           Example run:
-          python cmip5datafinder.py -p perfmetrics.txt --download --dryrun --verbose --database badc
+          (with param file) python cmip5datafinder.py -p perfmetrics.txt --download --dryrun --verbose --database badc
+          (with command line args) python cmip5datafinder.py --user-input --fileparams CMIP5 --fileparams bcc-csm1-1 --fileparams --fileparams Amon
+          --fileparams historical --fileparams r1i1p1 --fileparams 1982 --fileparams 2014 --uservars clt --uservars tro3 --uservars pr --database badc
+          --verbose
           """
     print >> sys.stdout, intro
     print >> sys.stdout
@@ -890,15 +995,19 @@ if verbose is True:
     if params_file:
         print >> sys.stdout,"Running with parameters file:", params_file
     else:
-        print >> sys.stdout,"Running with user-defined file parameters and variables     "
-        print >> sys.stdout,"File      :", fpars[0]
-        print >> sys.stdout,"Experiment:", fpars[1]
-        print >> sys.stdout,"Medium    :", fpars[2]
-        print >> sys.stdout,"Type      :", fpars[3]
-        print >> sys.stdout,"Ensemble  :", fpars[4]
-        print >> sys.stdout,"Year1     :", fpars[5]
-        print >> sys.stdout,"Year2     :", fpars[6]
-        print >> sys.stdout,"Var(s)    :", vpars[0]
+        if len(fpars) < 7:
+            print >> sys.stderr, "Too few file parameters (CMIP5 needs exacly 7: e.g. CMIP5 MPI-ESM-LR Amon historical r1i1p1 1980 2005)"
+            sys.exit(1)
+        else:
+            print >> sys.stdout,"Running with user-defined file parameters and variables     "
+            print >> sys.stdout,"File      :", fpars[0]
+            print >> sys.stdout,"Experiment:", fpars[1]
+            print >> sys.stdout,"Medium    :", fpars[2]
+            print >> sys.stdout,"Type      :", fpars[3]
+            print >> sys.stdout,"Ensemble  :", fpars[4]
+            print >> sys.stdout,"Year1     :", fpars[5]
+            print >> sys.stdout,"Year2     :", fpars[6]
+            print >> sys.stdout,"Var(s)    :", vpars[0]
     print >> sys.stdout
 
 # ---- if we are using synda
@@ -959,7 +1068,14 @@ for d in db:
         pfile4 = drb + '/cache_cmip5_synda_' + d + '.txt'
         pfile5 = drb + '/missing_cache_cmip5_synda_' + d + '.txt'
     errorfile = drb + '/cache_err.out'
-    nm = 'cache_' + params_file + '-' + d
+    if params_file:
+        nm = 'cache_' + params_file + '-' + d
+        if os.path.exists(nm):
+            os.remove(nm)
+    else:
+        nm = 'cache_user.txt-' + d
+        if os.path.exists(nm):
+            os.remove(nm)
 
     # ---- get root directory
     if verbose is True:
@@ -1004,9 +1120,18 @@ for d in db:
                     ar = open(pfile3, 'r')
                     lls = [line for line in ar if line.split()[0].split('_')[0] == 'CMIP5']
                     lenitemlist = len(lls)
+                    cat11 = [(p.split()[0],'dope') for p in lls if p.split()[1] == 'ERROR-MISSING']
+                    cat21 = [(p.split()[0],p.split()[2]) for p in lls if p.split()[1] == 'INCOMPLETE']
+                    A = {}
+                    B = {}
+                    for item in cat21:
+                        A.setdefault(item[0],[]).append(item[1])
+                    for item in cat11:
+                        B.setdefault(item[0],[]).append(item[1])
+                    Z = dict(A, **B)
                     if verbose is True:
                         print('\n-------------------------------------------------------------------------------------')
-                        print('We parsed a missing LOCAL data param file. We are missing files for %i data bases: ' % lenitemlist)
+                        print('We parsed a missing LOCAL data param file. We have missing/incomplete files for %i databases: ' % lenitemlist)
                         print('Calling SYNDA to look for data in /sdt/data or download what is not found...')
                         print('---------------------------------------------------------------------------------------')
                     for it in lls:
@@ -1022,19 +1147,19 @@ for d in db:
                         if download is True:
                             if verbose is True:
                                 if dryrunOn:
-                                    s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=True,verbose=True)
+                                    s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=True,verbose=True)
                                 else:
-                                    s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=False,verbose=True)
+                                    s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=False,verbose=True)
                             else:
                                 if dryrunOn:
-                                    s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=True,verbose=False)
+                                    s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=True,verbose=False)
                                 else:
-                                    s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=False,verbose=False)
+                                    s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=False,verbose=False)
                         else:
                             if verbose is True:
-                                s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=False,dryrunOn=False,verbose=True)
+                                s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=False,dryrunOn=False,verbose=True)
                             else:
-                                s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=False,dryrunOn=False,verbose=False)
+                                s = synda_dll(outpt,v1,yr1,yr2,header,Z,pfile4,pfile5,download=False,dryrunOn=False,verbose=False)
                         if s == 0:
                             with open(pfile5, 'a') as file:
                                 file.write(header + ' ' + 'ERROR-MISSING' + '\n')
@@ -1113,6 +1238,10 @@ for d in db:
     
         # ---- user command line arguments parsed here
         for vi in vpars:
+            if os.path.exists('prepended_temp.txt'):
+                os.remove('prepended_temp.txt')
+            #if os.path.exists('temp.txt'):
+            #    os.remove('temp.txt')
             header = fpars[0] + '_'+ fpars[1] + '_' + fpars[2]\
                      + '_' + fpars[3] + '_' + fpars[4] + '_' + str(fpars[5])+ '_' + str(fpars[6])\
                      + '_' + vi
@@ -1123,7 +1252,7 @@ for d in db:
                 print('Model data for: ', model_data + '\n')
             yr1 = fpars[5]
             yr2 = fpars[6]
-            tempfile = open('temp.txt', 'w')
+            tempfile = open('temp.txt', 'a')
             templine = model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + vi + '\n'
             tempfile.write(templine)
             tempfile.close()
@@ -1132,37 +1261,110 @@ for d in db:
             else:
                 write_cache_direct('temp.txt',ls_host_root,host_root,pfile2,pfile3,errorfile,latestDir,verbose=False)
             print_stats(pfile2,pfile3)
-            if synda is True:
-                outpt = synda_search(model_data,vi)
-                if download is True:
+            if syndacall is True:
+                if os.path.exists(pfile3):
                     if verbose is True:
-                        if dryrunOn:
-                            s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=True,verbose=True)
+                        print('\n-------------------------------------------------------------------------------------')
+                        print('We are missing files for our database: %s' % model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + vi)
+                        print('Calling SYNDA to look for data in /sdt/data or download what is not found...')
+                        print('---------------------------------------------------------------------------------------')
+                    ar = open(pfile3, 'r')
+                    lls = [line for line in ar if line.split()[0].split('_')[0] == 'CMIP5']
+                    lenitemlist = len(lls)
+                    cat11 = [(p.split()[0],'dope') for p in lls if p.split()[1] == 'ERROR-MISSING']
+                    cat21 = [(p.split()[0],p.split()[2]) for p in lls if p.split()[1] == 'INCOMPLETE']
+                    A = {}
+                    B = {}
+                    for item in cat21:
+                        A.setdefault(item[0],[]).append(item[1])
+                    for item in cat11:
+                        B.setdefault(item[0],[]).append(item[1])
+                    Z = dict(A, **B)
+                    outpt = synda_search(model_data,vi)
+                    if download is True:
+                        if verbose is True:
+                            if dryrunOn:
+                                s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=True,verbose=True)
+                            else:
+                                s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=False,verbose=True)
                         else:
-                            s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=False,verbose=True)
+                            if dryrunOn:
+                                s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=True,verbose=False)
+                            else:
+                                s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=True,dryrunOn=False,verbose=False)
                     else:
-                        if dryrunOn:
-                            s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=True,verbose=False)
+                        if verbose is True:
+                            s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=False,dryrunOn=False,verbose=True)
                         else:
-                            s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=True,dryrunOn=False,verbose=False)
+                            s = synda_dll(outpt,vi,yr1,yr2,header,Z,pfile4,pfile5,download=False,dryrunOn=False,verbose=False)
+                    if s == 0:
+                        with open(pfile5, 'a') as file:
+                            file.write(header + ' ' + 'ERROR-MISSING' + '\n')
+                            file.close()
+                    if os.path.exists(pfile4):
+                        fix_duplicate_entries(pfile4)
+                    if os.path.exists(errorfile):
+                        fix_duplicate_entries(errorfile)
+                    print_stats(pfile4,pfile5)
+                    # final cache merging and cleanup
+                    if os.path.exists(pfile2) and os.path.exists(pfile4):
+                        # create a composite file using caches from sever and synda
+                        compf = drb + '/cache_cmip5_combined_' + d + '.txt'
+                        cache_merge(pfile2,pfile4,compf)
+                        final_cache('temp.txt',compf,nm)
+                        print_final_stats(nm)
+                    else:
+                        # looks like synda didnt find anything extra
+                        if os.path.exists(pfile2):
+                            cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
+                            proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                            (out, err) = proc.communicate()
+                            final_cache('temp.txt',pfile2,nm)
+                            print_final_stats(nm)
+                        else:
+                            # looks like there is nothing in local but synda found extra
+                            if os.path.exists(pfile4):
+                                cpc = 'cp ' + pfile4 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
+                                proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                                (out, err) = proc.communicate()
+                                final_cache('temp.txt',pfile4,nm)
+                                print_final_stats(nm)
+                    # in case synda missed some databases
+                    if os.path.exists(pfile5):
+                        fix_duplicate_entries(pfile5)
+                        cpc = 'cp ' + pfile5 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
+                        proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                        (out, err) = proc.communicate()
                 else:
-                    if verbose is True:
-                        s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=False,dryrunOn=False,verbose=True)
-                    else:
-                        s = synda_dll(outpt,v1,yr1,yr2,header,pfile4,pfile5,download=False,dryrunOn=False,verbose=False)
-                if s == 0:
-                    with open(pfile5, 'a') as file:
-                        file.write(header + ' ' + 'ERROR-MISSING' + '\n')
-                        file.close()
-            if os.path.exists(pfile4):
-                fix_duplicate_entries(pfile4)
-            if os.path.exists(pfile5):
-                fix_duplicate_entries(pfile5)
+                    # no need to call synda if we found all needed databases on server
+                    print('Cached all data from local database %s' % d)
+                    if os.path.exists(pfile2):
+                        cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
+                        proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                        (out, err) = proc.communicate()
+                        final_cache('temp.txt',pfile2,nm)
+                        print_final_stats(nm)
+            # not calling synda at all
+            if verbose is True:
+                print('\n-------------------------------------------------------------------------------------')
+                print('We have looked at existing files LOCALLY only: ')
+                print('Here is what we found:')
+                print('---------------------------------------------------------------------------------------')
             if os.path.exists(errorfile):
                 fix_duplicate_entries(errorfile)
-            print('Synda results:')
-            print_stats(pfile4,pfile5)
-            os.remove('temp.txt') 
+                print_stats(pfile2,pfile3)
+            if os.path.exists(pfile2):
+                cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
+                proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                (out, err) = proc.communicate()
+                final_cache('temp.txt',pfile2,nm)
+                print_final_stats(nm)
+            if os.path.exists(pfile3):
+                cpc = 'cp ' + pfile3 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
+                proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
+                (out, err) = proc.communicate()
+            #os.remove('temp.txt')
+            os.remove('prepended_temp.txt')
 
     # ---- timing and exit
     t2 = time.time()
@@ -1175,8 +1377,11 @@ for d in db:
     print('Time elapsed: %.1f s' % dt)
 
 # ---- finish, cleanup and exit
-prp = 'prepended_' + params_file
-os.remove(prp)
+if params_file:
+    prp = 'prepended_' + params_file
+    os.remove(prp)
+if userVars:
+    os.remove('temp.txt')
 t20 = time.time()
 dt0 = t20 - t10
 if verbose is True:
