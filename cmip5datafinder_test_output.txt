@@ -1,0 +1,106 @@
+Test perfmetrics.txt 3-July-2017
+--------------------------------
+--------------------------------
+
+1. Without synda (badc-only)
+----------------------------
+python cmip5datafinder.py -p perfmetrics.txt --database badc --verbose
+---------------------------
+     Total needed databases: 408
+         Complete databases: 240
+       Incomplete databases: 106
+          Missing databases: 62
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 96.7 seconds
+=================================
+
+2. With synda
+-------------
+synda ceda only
+================
+python cmip5datafinder.py -p perfmetrics.txt --synda --download --dryrun --database badc --verbose
+---------------------------
+     Total needed databases: 408
+         Complete databases: 260
+       Incomplete databases: 112
+          Missing databases: 36
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 1024.6 seconds
+=================================
+
+synda dkrz only
+===============
+---------------------------
+     Total needed databases: 408
+         Complete databases: 260
+       Incomplete databases: 111
+          Missing databases: 37
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 1056.8 seconds
+=================================
+
+synda default dkrz
+==================
+ceda+dkrz
+---------------------------
+     Total needed databases: 408
+         Complete databases: 260
+       Incomplete databases: 111
+          Missing databases: 37
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 1075.6 seconds
+=================================
+
+synda default ceda
+==================
+ceda+dkrz
+---------------------------
+     Total needed databases: 408
+         Complete databases: 260
+       Incomplete databases: 112
+          Missing databases: 36
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 1006.9 seconds
+=================================
+
+synda default ceda
+==================
+ceda+dkrz+llnl
+---------------------------
+     Total needed databases: 408
+         Complete databases: 260
+       Incomplete databases: 112
+          Missing databases: 36
+     Complete dbs with gaps: 0
+   Incomplete dbs with gaps: 0
+Avg coverage for incomplete: 0.67
+---------------------------
+=================================
+DONE! with database badc
+Time elapsed: 924.5 seconds
+=================================
