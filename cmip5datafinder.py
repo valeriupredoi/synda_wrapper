@@ -564,10 +564,10 @@ def print_stats(outfile1,outfile2):
             m = 1
         else:
             m = len(ar2)
-        print('\n########################################################')
+        print('\n###############################################################')
         print('  Found and cached: %i individual .nc files cached' % f)
-        print('Missing/incomplete: %i individual datasets NOT cached' % m)
-        print('########################################################\n')
+        print('Missing/incomplete: %i individual datasets NOT cached/incomplete' % m)
+        print('#################################################################\n')
     elif os.path.exists(outfile1) and os.path.exists(outfile2) is False:
         ar1 = np.genfromtxt(outfile1, dtype=str,delimiter='\n')
         if ar1.ndim == 0:
@@ -735,11 +735,15 @@ def final_cache(parfile,ofile1,finalfile):
             for h in o1:
                 if header == h[0]:
                     y = h[1].split('/')[-1].strip('.nc').split('_')[-1].split('-')
-                    yr1 = date_handling(y[0],y[1])[0]
-                    yr2 = date_handling(y[0],y[1])[1]
-                    tt.append(yr1)
-                    tt.append(yr2)
-                    hh.append(h[1])
+                    # y could be some dodgy stuff if file not proper formatted
+                    if len(y) == 2: 
+                        yr1 = date_handling(y[0],y[1])[0]
+                        yr2 = date_handling(y[0],y[1])[1]
+                        tt.append(yr1)
+                        tt.append(yr2)
+                        hh.append(h[1])
+                    else:
+                        print('File: _date1-date2.nc not properly formatted...skipping it')
             y1 = int(b.split()[5])
             y2 = int(b.split()[6])
             # let's see how we do with time
