@@ -497,6 +497,7 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                 year2 = date_handling(time1,time2)[1]
                 # case where the required data completely overlaps
                 # available data
+                # this case stops the code to make a call to synda for this database
                 if time_handling(year1, yr1, year2, yr2)[0] is True and time_handling(year1, yr1, year2, yr2)[1] is True:
                     if os.path.exists(s):
                         with open(outfile, 'a') as file:
@@ -522,6 +523,9 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                             print('Cached file: ' + s)
                         sfn = s.split('/')[-1]
                         with open(outfile2, 'a') as file:
+                            # the INCOMPLETE indicator will be used
+                            # to label partially complete databases so synda can
+                            # look for the missing bits
                             file.write(header + ' INCOMPLETE ' + sfn + '\n')
                     else:
                         with open(outfile2, 'a') as file:
@@ -530,6 +534,7 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                             print('Missing: ' +  header)
         else:
             with open(outfile2, 'a') as file:
+                # missing entirely
                 file.write("_".join(item) + ' ERROR-MISSING' + '\n')
             if verbose is True:
                 print('Missing: ' + "_".join(item))
@@ -593,6 +598,14 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
     It also takes the variable name and the name of a cache file outfile that will be written to disk. 
     dryrunOn is the switch from a physical download to just polling the esgf node without any download.
 
+    varname: variable
+    D: incomplete databases: the dictionary that contains the files that are already available locally
+    year1_model, year2_model: needed database year1 and 2
+    header: unique database indicator e.g. CMIP5_CNRM-CM5_Amon_historical_r1i1p1_2003_2010_hus
+    outfile: cache file
+    outfile2: missing cache file
+    download: download (either dryrun or for reals) flag 
+    
     """
     # this is needed mostly for parallel processes that may
     # go tits-up from time to time due to random path mixes
@@ -616,11 +629,15 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                     if label=='done':
                         file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                         filepath_complete = '/sdt/data/c' + file_name_complete.replace('.','/').strip('/nc') + '.nc'
-                        with open(outfile, 'a') as file:
-                            file.write(header + ' ' + filepath_complete + ' ' + 'INSTALLED' + '\n')
-                        if verbose is True:
-                            print('File exists: ' + filepath_complete)
-                            # no download #
+                        fn = filepath_complete.split('/')[-1]
+                        # synda should not cache files in dictionary D
+                        # these belong to incomplete databases but are already on disk
+                        if fn not in D[header]:
+                            with open(outfile, 'a') as file:
+                                file.write(header + ' ' + filepath_complete + ' ' + 'INSTALLED' + '\n')
+                            if verbose is True:
+                                print('File exists: ' + filepath_complete)
+                                # no download #
                     elif label=='new':
                         if verbose is True:
                             print('File %s doesnt exist in local /sdt/data but is on ESGF nodes, enable download to get it' % file_name)
@@ -628,6 +645,8 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                             file_name_new = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                             filepath_new = '/sdt/data/c' + file_name_new.replace('.','/').strip('/nc') + '.nc'
                             fn = filepath_new.split('/')[-1]
+                            # synda should not download files in dictionary D
+                            # these belong to incomplete databases but are already on disk
                             if fn not in D[header]:
                                 if dryrunOn is True:
                                     if verbose is True:
@@ -790,6 +809,8 @@ def get_overlap(tt, my1, my2):
             # there are gaps!!
             # but we dont deal with them here
             df = 1
+            print('WARNING: there are gaps in data!')
+            print(tt)
             return df,2
 
         
@@ -1122,12 +1143,17 @@ for d in db:
                     lenitemlist = len(lls)
                     cat11 = [(p.split()[0],'dope') for p in lls if p.split()[1] == 'ERROR-MISSING']
                     cat21 = [(p.split()[0],p.split()[2]) for p in lls if p.split()[1] == 'INCOMPLETE']
+                    # construct two dictionaries:
+                    # A: contains all missing databases
+                    # B: contains the incomplete databases
                     A = {}
                     B = {}
                     for item in cat21:
                         A.setdefault(item[0],[]).append(item[1])
                     for item in cat11:
                         B.setdefault(item[0],[]).append(item[1])
+                    # convolve A and B so synda will download only the A's 'dope' (missing)
+                    # and the bits from B that are not already on disk
                     Z = dict(A, **B)
                     if verbose is True:
                         print('\n-------------------------------------------------------------------------------------')
