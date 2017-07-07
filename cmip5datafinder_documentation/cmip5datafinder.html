@@ -1,0 +1,297 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>cmip5datafinder module &#8212; Cmip5DataFinderDoc  documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Welcome to Cmip5DataFinderDoc’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-cmip5datafinder">
+<span id="cmip5datafinder-module"></span><h1>cmip5datafinder module<a class="headerlink" href="#module-cmip5datafinder" title="Permalink to this headline">¶</a></h1>
+<p>cmip5datafinder.py
+Python 2.7.13
+Script that searches for data locally and on valid ESGF nodes. It builds 
+cache files using the results of the search.</p>
+<dl class="function">
+<dt id="cmip5datafinder.cache_merge">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">cache_merge</code><span class="sig-paren">(</span><em>file1</em>, <em>file2</em>, <em>finalFile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#cache_merge"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.cache_merge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that takes two cache files and merges them
+into a single one. Caution:
+file1 = local database cache
+file2 = local synda cache</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.date_handling">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">date_handling</code><span class="sig-paren">(</span><em>time1</em>, <em>time2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#date_handling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.date_handling" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function deals with different input date formats e.g.
+time1 = 198204 or
+time1 = 19820422 or
+time1 = 198204220511 etc
+More formats can be coded in at this stage.
+Returns year 1 and year 2</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.final_cache">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">final_cache</code><span class="sig-paren">(</span><em>parfile</em>, <em>ofile1</em>, <em>finalfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#final_cache"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.final_cache" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that generates the final user-friendly
+single cache file; this can easily be used
+in various analyses; file legend:
+Database | data_status | Percent complete | available_data
+&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;
+CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus (complete,incomplete or missing) [file_list, if available]</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.find_local_files">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">find_local_files</code><span class="sig-paren">(</span><em>model</em>, <em>out1</em>, <em>dirname1</em>, <em>mfile</em>, <em>latest_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#find_local_files"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.find_local_files" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that performs local search for files using <a href="#id1"><span class="problematic" id="id2">`</span></a>find&#8217;
+The depth is as high as possible so that find is fast.
+model: CMIP5 MPI-ESM-LR Amon amip r1i1p1
+mfile: stderr dump file (cache_err.out) - need to capture
+instances of either Permission denied or non-existent dirs;
+latest_dir: latest version directory e.g. /latest/ on badc
+(see above for details)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.fix_duplicate_entries">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">fix_duplicate_entries</code><span class="sig-paren">(</span><em>outfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#fix_duplicate_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.fix_duplicate_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>simple fast function to eliminate duplicate entries
+from a cache file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.get_drs">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">get_drs</code><span class="sig-paren">(</span><em>dir1</em>, <em>sdir</em>, <em>ic</em>, <em>model</em>, <em>latest_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#get_drs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.get_drs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that returns DRS.
+dir1: root directory - /badc/cmip5/data/cmip5/output1/
+sdir: subdirectory (institution) - MPI-M
+ic: experiment - MPI-ESM-LR
+model: CMIP5 MPI-ESM-LR Amon amip r1i1p1
+latest_dir: on badc is /latest/ - this is known in advance
+and is dependant on where the code is run.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.get_overlap">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">get_overlap</code><span class="sig-paren">(</span><em>tt</em>, <em>my1</em>, <em>my2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#get_overlap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.get_overlap" title="Permalink to this definition">¶</a></dt>
+<dd><p>function that returns the amount of overlap
+between needed data and available data
+Returns a fractional float
+li: list of years from data (1-dim, even number of elements)
+my1,my2: required model years</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.lsladir">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">lsladir</code><span class="sig-paren">(</span><em>dirname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#lsladir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.lsladir" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calling this function once so we save time; called in root dirname.
+It is needed for generalization and not hardcoding the institutions.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.plotter">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">plotter</code><span class="sig-paren">(</span><em>cachefile</em>, <em>saveDir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#plotter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.plotter" title="Permalink to this definition">¶</a></dt>
+<dd><p>simple pie chart plotting function</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.print_final_stats">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">print_final_stats</code><span class="sig-paren">(</span><em>sfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#print_final_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.print_final_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>print some final stats
+To understand the output, by database we mean any file indicator
+of form e.g. CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus that is fully
+determined by its parameters; there could be multiple .nc files
+covering a single database, alas there could be just one.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.print_stats">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">print_stats</code><span class="sig-paren">(</span><em>outfile1</em>, <em>outfile2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#print_stats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.print_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>small function to print some stats at the end</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.synda_check_dll">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">synda_check_dll</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#synda_check_dll"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.synda_check_dll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Easy checker on current downloads</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.synda_dll">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">synda_dll</code><span class="sig-paren">(</span><em>searchoutput</em>, <em>varname</em>, <em>year1_model</em>, <em>year2_model</em>, <em>header</em>, <em>D</em>, <em>outfile</em>, <em>outfile2</em>, <em>download=False</em>, <em>dryrunOn=False</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#synda_dll"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.synda_dll" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes the standard search output from synda
+and parses it to see if/what files need to be downloaded</p>
+<p>The searchoutput argument is a string and is of the form e.g.</p>
+<p>new   221.2 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_195001-195912.nc
+done  132.7 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_200001-200512.nc
+new   221.2 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_185001-185912.nc</p>
+<p>ie typical synda file search output. This gets parsed in and analyzed
+against the required model file characterstics and files that comply can
+be downloaded via synda install. It also takes the year1_model and year2_model, for time checks.
+It also takes the variable name and the name of a cache file outfile that will be written to disk. 
+dryrunOn is the switch from a physical download to just polling the esgf node without any download.</p>
+<p>varname: variable
+D: incomplete databases: the dictionary that contains the files that are already available locally
+year1_model, year2_model: needed database year1 and 2
+header: unique database indicator e.g. CMIP5_CNRM-CM5_Amon_historical_r1i1p1_2003_2010_hus
+outfile: cache file
+outfile2: missing cache file
+download: download (either dryrun or for reals) flag</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.synda_search">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">synda_search</code><span class="sig-paren">(</span><em>model_data</em>, <em>varname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#synda_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.synda_search" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function performs the database search for files
+It takes exactly two arguments:
+- a model data string of type e.g. &#8216;CMIP5 MPI-ESM-LR Amon amip r1i1p1&#8217;
+- a variable name as string e.g. &#8216;tro3&#8217;
+It performs the search for files associated with these parameters and returns ALL
+available files. (command example: synda search -f CMIP5 MPI-ESM-LR Amon amip r1i1p1 tro3)</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.time_handling">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">time_handling</code><span class="sig-paren">(</span><em>year1</em>, <em>year1_model</em>, <em>year2</em>, <em>year2_model</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#time_handling"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.time_handling" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is responsible for finding the correct 
+files for the needed timespan:</p>
+<p>year1 - the start year in files
+year1_model - the needed start year of data
+year2 - the last year in files
+year2_model - the needed last year of data
+WARNINGS:
+we reduce our analysis only to years</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.usage">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">usage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#usage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.usage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.which_synda">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">which_synda</code><span class="sig-paren">(</span><em>synda</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#which_synda"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.which_synda" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function returns the path to the synda exec
+or aborts the whole program if synda needs to be used
+but its executable is not found.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.write_cache_direct">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">write_cache_direct</code><span class="sig-paren">(</span><em>params_file</em>, <em>ldir</em>, <em>rdir</em>, <em>outfile</em>, <em>outfile2</em>, <em>errfile</em>, <em>ld</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#write_cache_direct"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.write_cache_direct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that does direct parsing of available database files and establishes
+the paths to the needed files; makes use of find_local_files()
+File versioning is controlled by finding the ld = e.g. /latest/ dir 
+in the badc database, this may differ on other clusters</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="cmip5datafinder.write_cache_via_synda">
+<code class="descclassname">cmip5datafinder.</code><code class="descname">write_cache_via_synda</code><span class="sig-paren">(</span><em>searchoutput</em>, <em>varname</em>, <em>year1_model</em>, <em>year2_model</em>, <em>header</em>, <em>outfile</em>, <em>outfile2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmip5datafinder.html#write_cache_via_synda"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#cmip5datafinder.write_cache_via_synda" title="Permalink to this definition">¶</a></dt>
+<dd><p>WARNING1: this function is SLOW
+WARNING2: this function is not currently used
+&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-
+This function takes the standard search output from synda (synda_search())
+and parses it to see if/what files exist locally</p>
+<p>The searchoutput argument is a string and is of the form e.g.</p>
+<p>new   221.2 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_195001-195912.nc
+done  132.7 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_200001-200512.nc
+new   221.2 MB  cmip5.output1.MPI-M.MPI-ESM-LR.historical.mon.atmos.Amon.r1i1p1.v20120315.tro3_Amon_MPI-ESM-LR_historical_r1i1p1_185001-185912.nc</p>
+<p>ie typical synda file search output. This gets parsed in and analyzed
+against the required model file characterstics and files that comply and 
+exist locally are stored in a cache file for data reading. It also takes the year1_model and year2_model, for time checks.
+It also takes the variable name and the name of a cache file outfile that will be written to disk.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to Cmip5DataFinderDoc&#8217;s documentation!</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/cmip5datafinder.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Valeriu Predoi.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/cmip5datafinder.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

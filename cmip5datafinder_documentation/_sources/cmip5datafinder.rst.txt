@@ -1,0 +1,7 @@
+cmip5datafinder module
+======================
+
+.. automodule:: cmip5datafinder
+    :members:
+    :undoc-members:
+    :show-inheritance:
