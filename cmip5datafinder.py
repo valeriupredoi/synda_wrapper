@@ -851,6 +851,60 @@ def print_final_stats(sfile):
     print('Avg coverage for incomplete: %.2f' % np.mean(prcc))
     print('---------------------------')
 
+# ---- plotting the databases in pie charts
+def plotter(cachefile,saveDir):
+    """
+    simple pie chart plotting function
+    """
+    # get matplotlib
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    # plot overall
+    ff = open(cachefile,'r')
+    lff = ff.readlines()
+    c = [a for a in lff if a.split()[1] == 'complete']
+    ic = [b for b in lff if b.split()[1] == 'incomplete']
+    mi = [d for d in lff if d.split()[1] == 'missing']
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    labels = 'complete', 'incomplete', 'missing'
+    sizes = [len(c), len(ic), len(mi)]
+    explode = (0, 0.1, 0)  # only "explode" the 2nd slice (i.e. 'incomplete')
+    # plot
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
+            shadow=True, startangle=90)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.title('Overall data coverage')
+    saveLoc = saveDir + '/overall.png'
+    plt.savefig(saveLoc)
+    # plot only missing
+    c2 = [a.split()[0].split('_')[1] for a in lff if a.split()[1] == 'missing']
+    c2s = list(set(c2))
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    labels = c2s
+    sizes = [c2.count(a) for a in c2s]
+    # plot
+    fig2, ax2 = plt.subplots()
+    ax2.pie(sizes, labels=labels, autopct='%1.1f%%',startangle=90)
+    ax2.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.title('Missing data by model')
+    saveLoc = saveDir + '/missing.png'
+    plt.savefig(saveLoc)
+    # plot only incomplete
+    c2 = [a.split()[0].split('_')[1] for a in lff if a.split()[1] == 'incomplete']
+    c2s = list(set(c2))
+    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
+    labels = c2s
+    sizes = [c2.count(a) for a in c2s]
+    # plot
+    fig3, ax3 = plt.subplots()
+    ax3.pie(sizes, labels=labels, autopct='%1.1f%%',startangle=90)
+    ax3.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    plt.title('Incomplete data by model')
+    saveLoc = saveDir + '/incomplete.png'
+    plt.savefig(saveLoc)
+
 # ---- synda check download
 def synda_check_dll():
     """
@@ -1207,6 +1261,7 @@ for d in db:
                         cache_merge(pfile2,pfile4,compf)
                         final_cache(params_file,compf,nm)
                         print_final_stats(nm)
+                        plotter(nm,drb)
                     else:
                         # looks like synda didnt find anything extra
                         if os.path.exists(pfile2):
@@ -1215,6 +1270,7 @@ for d in db:
                             (out, err) = proc.communicate()
                             final_cache(params_file,pfile2,nm)
                             print_final_stats(nm)
+                            plotter(nm,drb)
                         else:
                             # looks like there is nothing in local but synda found extra
                             if os.path.exists(pfile4):
@@ -1223,6 +1279,7 @@ for d in db:
                                 (out, err) = proc.communicate()
                                 final_cache(params_file,pfile4,nm)
                                 print_final_stats(nm)
+                                plotter(nm,drb)
                     # in case synda missed some databases
                     if os.path.exists(pfile5):
                         fix_duplicate_entries(pfile5)
@@ -1238,6 +1295,7 @@ for d in db:
                         (out, err) = proc.communicate()
                         final_cache(params_file,pfile2,nm)
                         print_final_stats(nm)
+                        plotter(nm,drb)
                     #sys.exit(0)
             else:
                 # not calling synda at all
@@ -1258,6 +1316,7 @@ for d in db:
                     (out, err) = proc.communicate()
                     final_cache(params_file,pfile2,nm)
                     print_final_stats(nm)
+                    plotter(nm,drb)
                 if os.path.exists(pfile3):
                     cpc = 'cp ' + pfile3 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
                     proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
