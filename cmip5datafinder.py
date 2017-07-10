@@ -28,8 +28,8 @@ __author__ = "Valeriu Predoi <valeriu.predoi@ncas.ac.uk>"
 # ---- opts parsing
 def usage():
   msg = """\
-This is a flexible tool to generate cache files from local databases and ESGF nodes.
-This makes use of synda for querying ESGF nodes as well.
+This is a flexible tool to generate cache files from local datasources (e.g. badc or dkrz 
+mounted disks) and ESGF nodes. This makes use of synda for querying ESGF nodes as well.
 For problems or queries, email valeriu.predoi@ncas.ac.uk. Have fun!
 
 Code functionality:
@@ -37,24 +37,25 @@ Code functionality:
 files locally and returns the physical paths to the found files;
 2. If files are not found, the user has the option to download missing files from ESGF
 nodes via synda;
-3. Finally, the code writes cache files stored in a directory cache_files_[SERVER]:
-           - cache_cmip5_[SERVER].txt local cache file with paths only on server [SERVER]
-           - cache_cmip5_combined_[SERVER].txt combined local cache file (synda+[SERVER])
-           - cache_cmip5_synda_[SERVER].txt synda local cache file
+3. Finally, the code writes cache files stored in a directory cache_files_[DATASOURCE]:
+           - cache_cmip5_[DATASOURCE].txt local cache file with paths only on server [DATASOURCE]
+           - cache_cmip5_combined_[DATASOURCE].txt combined local cache file (synda+DATASOURCE)
+           - cache_cmip5_synda_[DATASOURCE].txt synda local cache file
            - cache_err.out errors sdout while caching
-           - missing_cache_cmip5_[SERVER].txt local missing files on [SERVER]
-           - missing_cache_cmip5_combined_[SERVER].txt missing files (synda+local)
-           - missing_cache_cmip5_synda_[SERVER].txt synda missing files
+           - missing_cache_cmip5_[DATASOURCE].txt local missing files on [SERVER]
+           - missing_cache_cmip5_combined_[DATASOURCE].txt missing files (synda+local)
+           - missing_cache_cmip5_synda_[DATASOURCE].txt synda missing files
+4. Finally-finally it plots the overall, incomplete and missing files by model (png format).
 
 Example run:
-python cmip5datafinder.py -p PARAM_FILE --synda --download --dryrun --verbose --database badc
+python cmip5datafinder.py -p PARAM_FILE --synda --download --dryrun --verbose --datasource badc
 
-Definition of database:
-To understand the output, by database we mean any file indicator
+Definition of filedescriptor:
+To understand the output, by filedescriptor we mean any file indicator
 of form e.g. CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus that is fully
 determined by its parameters; there could be multiple .nc files
-covering a single database, alas there could be just one.
-All cache files contain first a file indicator = database e.g.
+covering a single filedescriptor, alas there could be just one.
+All cache files contain first a file indicator = filedescriptor e.g.
 
 CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus
 
@@ -69,9 +70,9 @@ Usage:
   --user-input                Flag for user defined CMIP file and variables parameters (to be input at command line
                               with --fileparams for each parameter)
                               This option is REQUIRED if --params-file is not present
-  --database                  Name of local database (example: badc). Available databases:
+  --datasource                Name of local data source (example: badc). Available datasources:
                               badc [to add more here, depending where running the code][REQUIRED]
-  --synda                     Flag to call synda operations. If not passed, local database will be used ONLY
+  --synda                     Flag to call synda operations. If not passed, local datasources will be used ONLY
   --download                  Flag to allow download missing data via synda
   --dryrun                    Flag to pass if no download is wanted. Don't pass this if downloads are neeeded!
                               If --dryrun in arguments, all cache files will be written as normal but with
@@ -86,18 +87,18 @@ Usage:
   --verbose                   Flag to show in-code detailed messages
 
 Understand the workflow:
-(1) python cmip5datafinder.py -p PARAM_FILE --database badc
-   looks for files associated with databases in PARAM_FILE locally on badc only, in dirs in root /badc/cmip5/data/cmip5/output1/
+(1) python cmip5datafinder.py -p PARAM_FILE --datasource badc
+   looks for files associated with data sources in PARAM_FILE locally on e.g badc only, in dirs in root /badc/cmip5/data/cmip5/output1/
    stores cache files in cache_files_badc/ and creates user-friendly cache cache_PARAM_FILE.txt-badc
-(2) python cmip5datafinder.py -p PARAM_FILE --synda --database badc
-   same as (1), but it adds the local /sdt/data/ to the data lookup targets ONLY for missing files on badc; creates combined caches 
+(2) python cmip5datafinder.py -p PARAM_FILE --synda --datasource badc
+   same as (1), but it adds the local /sdt/data/ to the data lookup targets ONLY for incomplete/missing filedescriptors on badc; creates combined caches 
    with data on badc and in /sdt/;
    creates the same user-friendly cache_PARAM_FILE.txt-badc that this time will include files present in /sdt/ too
-(3) python cmip5datafinder.py -p PARAM_FILE --synda --download --database badc
-   same as (2) only this time the code will search for files that are missing from badc AND /sdt/ over the net on ESGF nodes and will
+(3) python cmip5datafinder.py -p PARAM_FILE --synda --download --datasource badc
+   same as (2) only this time the code will search for files that are incomplete or missing from badc AND /sdt/ over the net on ESGF nodes and will
    download them into /sdt/data/ if no --dryrun specified; NOTE that it is impossible to ask for download if prior checks in BOTH
-   badc and /sdt/data/ have not been done;
-(4) python cmip5datafinder.py -p PARAM_FILE --synda --download --dryrun --database badc
+   badc and /sdt/data/ have not been done (this is in place so that wild download will not happen);
+(4) python cmip5datafinder.py -p PARAM_FILE --synda --download --dryrun --datasource badc
    same as (3) but no actual downloads happen. 
 
 """
@@ -215,7 +216,7 @@ def fix_duplicate_entries(outfile):
 # ---- synda search
 def synda_search(model_data,varname):
     """
-    This function performs the database search for files
+    This function performs the search for files in synda-standard paths
     It takes exactly two arguments:
     - a model data string of type e.g. 'CMIP5 MPI-ESM-LR Amon amip r1i1p1'
     - a variable name as string e.g. 'tro3'
@@ -285,8 +286,8 @@ def write_cache_via_synda(searchoutput,varname,year1_model,year2_model,header,ou
                     file_name_complete = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                     true_file_name = file_name_complete.split('.')[-2]+'.'+file_name_complete.split('.')[-1]
                     print('Matching file: %s' % true_file_name)
-                    # get the most recent file from database
-                    # synda will always list the most recent database first
+                    # get the most recent file from datasource
+                    # synda will always list the most recent filedescriptor first
                     synda_search = which_synda('synda') + ' search -f -l 1 ' + true_file_name
                     proc = subprocess.Popen(synda_search, stdout=subprocess.PIPE, shell=True)
                     (out, err) = proc.communicate()
@@ -343,7 +344,7 @@ def write_cache_via_synda(searchoutput,varname,year1_model,year2_model,header,ou
                             file.write(header + ' ' + 'ERROR ' + file_name_complete + ' could not be found' + '\n')
                             file.close()
     else:
-        print >> sys.stderr, "Could not find database with the specified parameters on BADC"
+        print >> sys.stderr, "Could not find filedescriptor with the specified parameters on datasource"
         return 0
 
 # ---- function that returns the DRS
@@ -459,10 +460,11 @@ def find_local_files(model,out1,dirname1,mfile,latest_dir):
 # ---- cache local data
 def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose=False):
     """
-    Function that does direct parsing of available database files and establishes
+    Function that does direct parsing of available datasource files and establishes
     the paths to the needed files; makes use of find_local_files()
     File versioning is controlled by finding the ld = e.g. /latest/ dir 
-    in the badc database, this may differ on other clusters
+    in the badc datasource, this may differ on other clusters and should be correctly
+    hardcoded in the code!
 
     """
     car = np.genfromtxt(params_file, dtype=str, delimiter='\n')
@@ -497,7 +499,7 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                 year2 = date_handling(time1,time2)[1]
                 # case where the required data completely overlaps
                 # available data
-                # this case stops the code to make a call to synda for this database
+                # this case stops the code to make a call to synda for this filedescriptor
                 if time_handling(year1, yr1, year2, yr2)[0] is True and time_handling(year1, yr1, year2, yr2)[1] is True:
                     if os.path.exists(s):
                         with open(outfile, 'a') as file:
@@ -524,8 +526,8 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                         sfn = s.split('/')[-1]
                         with open(outfile2, 'a') as file:
                             # the INCOMPLETE indicator will be used
-                            # to label partially complete databases so synda can
-                            # look for the missing bits
+                            # to label partially complete filedescriptors so synda can
+                            # look for the missing bits and hopefully complete it
                             file.write(header + ' INCOMPLETE ' + sfn + '\n')
                     else:
                         with open(outfile2, 'a') as file:
@@ -599,9 +601,9 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
     dryrunOn is the switch from a physical download to just polling the esgf node without any download.
 
     varname: variable
-    D: incomplete databases: the dictionary that contains the files that are already available locally
-    year1_model, year2_model: needed database year1 and 2
-    header: unique database indicator e.g. CMIP5_CNRM-CM5_Amon_historical_r1i1p1_2003_2010_hus
+    D: incomplete filedescriptors: the dictionary that contains the files that are already available locally
+    year1_model, year2_model: needed filedescriptor year1 and 2
+    header: unique filedescriptor indicator e.g. CMIP5_CNRM-CM5_Amon_historical_r1i1p1_2003_2010_hus
     outfile: cache file
     outfile2: missing cache file
     download: download (either dryrun or for reals) flag 
@@ -631,7 +633,7 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                         filepath_complete = '/sdt/data/c' + file_name_complete.replace('.','/').strip('/nc') + '.nc'
                         fn = filepath_complete.split('/')[-1]
                         # synda should not cache files in dictionary D
-                        # these belong to incomplete databases but are already on disk
+                        # these belong to incomplete filedescriptors but are already on disk
                         if fn not in D[header]:
                             with open(outfile, 'a') as file:
                                 file.write(header + ' ' + filepath_complete + ' ' + 'INSTALLED' + '\n')
@@ -646,7 +648,7 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                             filepath_new = '/sdt/data/c' + file_name_new.replace('.','/').strip('/nc') + '.nc'
                             fn = filepath_new.split('/')[-1]
                             # synda should not download files in dictionary D
-                            # these belong to incomplete databases but are already on disk
+                            # these belong to incomplete filedescriptors but are already on disk
                             if fn not in D[header]:
                                 if dryrunOn is True:
                                     if verbose is True:
@@ -687,8 +689,8 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
 def cache_merge(file1,file2,finalFile):
     """
     Function that takes two cache files and merges them
-    into a single one. Caution:
-    file1 = local database cache
+    into a single one. Caution -- note the order:
+    file1 = local datasource cache
     file2 = local synda cache
     """
     f1 = open(file1, 'r')
@@ -824,10 +826,10 @@ def get_overlap(tt, my1, my2):
 def print_final_stats(sfile):
     """
     print some final stats
-    To understand the output, by database we mean any file indicator
+    To understand the output, by filedescriptor we mean any file indicator
     of form e.g. CMIP5_MIROC5_Amon_historical_r1i1p1_2003_2010_hus that is fully
     determined by its parameters; there could be multiple .nc files
-    covering a single database, alas there could be just one.
+    covering a single filedescriptor, alas there could be just one.
     """
     ff = open(sfile, 'r')
     lff = ff.readlines()
@@ -842,16 +844,16 @@ def print_final_stats(sfile):
         print('============================')
         print('WARNING: THERE ARE DATA GAPS!')
         print('============================')
-    print('     Total needed databases: %i' % len(lff))
-    print('         Complete databases: %i' % len(c))
-    print('       Incomplete databases: %i' % len(ic))
-    print('          Missing databases: %i' % len(mi))
-    print('     Complete dbs with gaps: %i' % len(gc))
-    print('   Incomplete dbs with gaps: %i' % len(gic))
-    print('Avg coverage for incomplete: %.2f' % np.mean(prcc))
+    print('     Total needed filedescriptors: %i' % len(lff))
+    print('         Complete filedescriptors: %i' % len(c))
+    print('       Incomplete filedescriptors: %i' % len(ic))
+    print('          Missing filedescriptors: %i' % len(mi))
+    print('           Complete dbs with gaps: %i' % len(gc))
+    print('         Incomplete dbs with gaps: %i' % len(gic))
+    print('      Avg coverage for incomplete: %.2f' % np.mean(prcc))
     print('---------------------------')
 
-# ---- plotting the databases in pie charts
+# ---- plotting the filedescriptors in pie charts
 def plotter(cachefile,saveDir):
     """
     simple pie chart plotting function
@@ -949,7 +951,7 @@ longop = [
    "help",
    "params-file=",
    "user-input",
-   "database=",
+   "datasource=",
    "synda",
    "download",
    "dryrun",
@@ -981,9 +983,9 @@ for o, a in opts:
     elif o in ("--user-input"):
       userVars = True
       command_string = command_string + ' --user-input '
-    elif o in ("--database"):
+    elif o in ("--datasource"):
         db.append(a)
-        command_string = command_string + ' --database ' + a
+        command_string = command_string + ' --datasource ' + a
     elif o in ("--synda"):
       syndacall = True
       command_string = command_string + ' --synda '
@@ -1029,8 +1031,8 @@ if params_file and userVars:
     print >> sys.stderr, "by command-line options for file and variables parameters. Can not use both options! Exiting."
     sys.exit(1)
 if not db:
-    print >> sys.stderr, "No local database to search specified"
-    print >> sys.stderr, "Use --database to specify a valid database e.g. badc Exiting"
+    print >> sys.stderr, "No local datasource to search specified"
+    print >> sys.stderr, "Use --datasource to specify a valid datasource e.g. badc or dkrz. Exiting..."
     sys.exit(1)
 
 # -------------------------------------------------------------------------
@@ -1039,7 +1041,7 @@ if not db:
 
 if verbose is True:
     intro = """\
-          This is a flexible tool to generate cache files from local databases and ESGF nodes.
+          This is a flexible tool to generate cache files from local datasources and ESGF nodes.
           This makes use of synda for querying ESGF nodes as well.
           For problems or queries, email valeriu.predoi@ncas.ac.uk. Have fun!
           
@@ -1058,9 +1060,9 @@ if verbose is True:
            - missing_cache_cmip5_synda_[SERVER].txt synda missing files
 
           Example run:
-          (with param file) python cmip5datafinder.py -p perfmetrics.txt --download --dryrun --verbose --database badc
+          (with param file) python cmip5datafinder.py -p perfmetrics.txt --download --dryrun --verbose --datasource badc
           (with command line args) python cmip5datafinder.py --user-input --fileparams CMIP5 --fileparams bcc-csm1-1 --fileparams --fileparams Amon
-          --fileparams historical --fileparams r1i1p1 --fileparams 1982 --fileparams 2014 --uservars clt --uservars tro3 --uservars pr --database badc
+          --fileparams historical --fileparams r1i1p1 --fileparams 1982 --fileparams 2014 --uservars clt --uservars tro3 --uservars pr --datasource badc
           --verbose
           """
     print >> sys.stdout, intro
@@ -1125,7 +1127,7 @@ pfile.close()
 # ---- hardcoded names so we standardize analyses
 # ---- start overall timing
 t10 = time.time()
-# ---- db is a list and we run on each database
+# ---- db is a list and we run on each called datasource
 for d in db:
     # we need to firstly remove any pre existent cache dirs
     drb = 'cache_files_' + d
@@ -1134,7 +1136,7 @@ for d in db:
         rrc = 'rm -r ' + drb
         proc = subprocess.Popen(rrc, stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
-    print('Polling %s database...' % d)
+    print('Polling %s datasource...' % d)
     # ...then create new one, standard name cache_files_[SERVER] eg cache_files_badc
     print('We will be writing all needed cache files to %s directory...' % drb)
     mkc = 'mkdir -p ' + drb
@@ -1158,7 +1160,7 @@ for d in db:
 
     # ---- get root directory
     if verbose is True:
-        print('Using %s as local searchable database' % d)
+        print('Using %s as local searchable datasource' % d)
     if d == 'badc':
         host_root = '/badc/cmip5/data/cmip5/output1/'
         ls_host_root = lsladir(host_root)
@@ -1194,7 +1196,7 @@ for d in db:
                 else:
                     write_cache_direct(params_file,ls_host_root,host_root,pfile2,pfile3,errorfile,latestDir,verbose=False)
                 print_stats(pfile2,pfile3)
-                # check for incomplete/missing databases
+                # check for incomplete/missing filedescriptors
                 if os.path.exists(pfile3):
                     ar = open(pfile3, 'r')
                     lls = [line for line in ar if line.split()[0].split('_')[0] == 'CMIP5']
@@ -1202,8 +1204,8 @@ for d in db:
                     cat11 = [(p.split()[0],'dope') for p in lls if p.split()[1] == 'ERROR-MISSING']
                     cat21 = [(p.split()[0],p.split()[2]) for p in lls if p.split()[1] == 'INCOMPLETE']
                     # construct two dictionaries:
-                    # A: contains all missing databases
-                    # B: contains the incomplete databases
+                    # A: contains all missing filedescriptors
+                    # B: contains the incomplete filedescriptors
                     A = {}
                     B = {}
                     for item in cat21:
@@ -1214,10 +1216,10 @@ for d in db:
                     # and the bits from B that are not already on disk
                     Z = dict(A, **B)
                     if verbose is True:
-                        print('\n-------------------------------------------------------------------------------------')
-                        print('We parsed a missing LOCAL data param file. We have missing/incomplete files for %i databases: ' % lenitemlist)
+                        print('\n-----------------------------------------------------------------------------------------------------')
+                        print('We parsed a missing LOCAL data param file. We have missing/incomplete files for %i filedescriptors: ' % lenitemlist)
                         print('Calling SYNDA to look for data in /sdt/data or download what is not found...')
-                        print('---------------------------------------------------------------------------------------')
+                        print('-------------------------------------------------------------------------------------------------------')
                     for it in lls:
                         ite = it.split()[0].split('_')
                         v1 = ite[7]
@@ -1280,15 +1282,15 @@ for d in db:
                                 final_cache(params_file,pfile4,nm)
                                 print_final_stats(nm)
                                 plotter(nm,drb)
-                    # in case synda missed some databases
+                    # in case synda missed some filedescriptors
                     if os.path.exists(pfile5):
                         fix_duplicate_entries(pfile5)
                         cpc = 'cp ' + pfile5 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
                         proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
                         (out, err) = proc.communicate()
                 else:
-                    # no need to call synda if we found all needed databases on server
-                    print('Cached all data from local database %s' % d)
+                    # no need to call synda if we found all needed filedescriptors on server
+                    print('Cached all needed data from local datasource %s' % d)
                     if os.path.exists(pfile2):
                         cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
                         proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
@@ -1354,7 +1356,7 @@ for d in db:
                 if os.path.exists(pfile3):
                     if verbose is True:
                         print('\n-------------------------------------------------------------------------------------')
-                        print('We are missing files for our database: %s' % model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + vi)
+                        print('We are missing files for our needed filedescriptor: %s' % model_data + ' ' + str(yr1) + ' ' + str(yr2) + ' ' + vi)
                         print('Calling SYNDA to look for data in /sdt/data or download what is not found...')
                         print('---------------------------------------------------------------------------------------')
                     ar = open(pfile3, 'r')
@@ -1418,15 +1420,15 @@ for d in db:
                                 (out, err) = proc.communicate()
                                 final_cache('temp.txt',pfile4,nm)
                                 print_final_stats(nm)
-                    # in case synda missed some databases
+                    # in case synda missed some filedescriptors
                     if os.path.exists(pfile5):
                         fix_duplicate_entries(pfile5)
                         cpc = 'cp ' + pfile5 + ' ' + drb + '/missing_cache_cmip5_combined_' + d + '.txt'
                         proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
                         (out, err) = proc.communicate()
                 else:
-                    # no need to call synda if we found all needed databases on server
-                    print('Cached all data from local database %s' % d)
+                    # no need to call synda if we found all needed filedescriptors on server
+                    print('Cached all data from local datasource %s' % d)
                     if os.path.exists(pfile2):
                         cpc = 'cp ' + pfile2 + ' ' + drb + '/cache_cmip5_combined_' + d + '.txt'
                         proc = subprocess.Popen(cpc, stdout=subprocess.PIPE, shell=True)
@@ -1460,7 +1462,7 @@ for d in db:
     dt = t2 - t1
     if verbose is True:
         print('=================================')
-        print('DONE! with database %s' % d)
+        print('DONE! with datasource %s' % d)
         print('Time elapsed: %.1f seconds' % dt)
         print('=================================')
     print('Time elapsed: %.1f s' % dt)
@@ -1474,10 +1476,11 @@ if userVars:
 t20 = time.time()
 dt0 = t20 - t10
 if verbose is True:
-    print('=================================')
-    print('DONE! with all databases')
+    print('==================================================')
+    print('DONE! with all datasources')
     print('Time elapsed: %.1f seconds' % dt0)
-    print('=================================')
+    print('If your data is fully cached, you deserve a beer :)')
+    print('==================================================')
 print('Time elapsed: %.1f s' % dt0)
 
 # ---- end of code
