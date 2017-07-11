@@ -505,12 +505,12 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                         with open(outfile, 'a') as file:
                             file.write(header + ' ' + s + '\n')
                         if verbose is True:
-                            print('Cached file: ' + s)
+                            print('Cached file from local datasource: ' + s)
                     else:
                         with open(outfile2, 'a') as file:
                             file.write(header + ' ERROR-MISSING' + '\n')
                         if verbose is True:
-                            print('Missing: ' +  header)
+                            print('WARNING: missing from local datasource: ' +  header)
                 # case where the required data is not fully found
                 # ie incomplete data 
                 # what we want to do here is cache what we have available
@@ -522,7 +522,7 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                         with open(outfile, 'a') as file:
                             file.write(header + ' ' + s + '\n')
                         if verbose is True:
-                            print('Cached file: ' + s)
+                            print('Cached file from local datasource: ' + s)
                         sfn = s.split('/')[-1]
                         with open(outfile2, 'a') as file:
                             # the INCOMPLETE indicator will be used
@@ -533,21 +533,21 @@ def write_cache_direct(params_file,ldir,rdir,outfile,outfile2,errfile,ld,verbose
                         with open(outfile2, 'a') as file:
                             file.write(header + ' ERROR-MISSING' + '\n')
                         if verbose is True:
-                            print('Missing: ' +  header)
+                            print('WARNING: missing from local datasource: ' +  header)
         else:
             with open(outfile2, 'a') as file:
                 # missing entirely
                 file.write("_".join(item) + ' ERROR-MISSING' + '\n')
             if verbose is True:
-                print('Missing: ' + "_".join(item))
+                print('WARNING: missing from local datasource: ' + "_".join(item))
     if os.path.exists(outfile):
         fix_duplicate_entries(outfile)
     else:
-        print >> sys.stderr, "Something went wrong: could not write cache file"
+        print >> sys.stderr, "WARNING: could not cache any data from local datasource"
     if os.path.exists(outfile2):
         fix_duplicate_entries(outfile2)
     else:
-        print >> sys.stderr, "Looks like there are no missing files, huzzah!"
+        print >> sys.stderr, "Cached all needed data from local datasource. Looks like there are no missing files, huzzah!"
 
 # ---- print some stats
 def print_stats(outfile1,outfile2):
@@ -580,7 +580,7 @@ def print_stats(outfile1,outfile2):
         print('Found and cached: %i individual .nc files cached' % f)
         print('########################################################\n')
     elif os.path.exists(outfile1) is False:
-        print('Shoot! No cache written...something went wrong here!') 
+        print('Shoot! No cache written this time around...') 
 
 # ---- synda download
 def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outfile2,download=False,dryrunOn=False,verbose=False):
@@ -638,11 +638,9 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                             with open(outfile, 'a') as file:
                                 file.write(header + ' ' + filepath_complete + ' ' + 'INSTALLED' + '\n')
                             if verbose is True:
-                                print('File exists: ' + filepath_complete)
+                                print('File exists in local /sdt/data, path: ' + filepath_complete)
                                 # no download #
                     elif label=='new':
-                        if verbose is True:
-                            print('File %s doesnt exist in local /sdt/data but is on ESGF nodes, enable download to get it' % file_name)
                         if download is True:
                             file_name_new = ".".join(file_name.split('.')[:10]) + '.' + varname + '.' + ".".join(file_name.split('.')[10:])
                             filepath_new = '/sdt/data/c' + file_name_new.replace('.','/').strip('/nc') + '.nc'
@@ -652,6 +650,7 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                             if fn not in D[header]:
                                 if dryrunOn is True:
                                     if verbose is True:
+                                        print('Needed file %s doesnt exist in local /sdt/data but is on ESGF nodes, enable download to get it' % file_name)
                                         print('Download enabled in dryrun mode...')
                                         print('Synda found file: ' + file_name)
                                         print('If installed, full path would be: ' + filepath_new)
@@ -671,17 +670,22 @@ def synda_dll(searchoutput,varname,year1_model,year2_model,header,D,outfile,outf
                                         with open(outfile, 'a') as file:
                                             file.write(header + ' ' + filepath_new + ' ' + 'INSTALLED' + '\n')
                                     if verbose is True:
+                                        print('Needed file %s doesnt exist in local /sdt/data but is on ESGF nodes' % file_name)
                                         print('Download enabled in full install mode...')
                                         print('Downloading file: ' + file_name)
                                         print('Full path: ' + filepath_new)
                                         # yes download #
                 else:
                     if verbose is True:
-                        print('Missing: ' + header)
+                        print('WARNING: synda - not cached due to requested period mismatch: ' + header + ' ' + file_name)
                     return 0
+            else:
+                if verbose is True:
+                    print('WARNING: synda - not cached due to model mismatch: ' + header + ' ' + file_name)
+                return 0
     else:
         if verbose is True:
-            print('Missing: ' + header)
+            print('WARNING: synda - missing data altogether: ' + header)
         return 0
     if os.path.exists(outfile):
         fix_duplicate_entries(outfile)
