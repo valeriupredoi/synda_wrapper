@@ -52,21 +52,28 @@
 
 \section*{Summary}
 \phantomsection\label{\detokenize{index:module-cmip5datafinder}}\index{cmip5datafinder (module)}
-\textbf{Name:} cmip5datafinder.py
-
-\textbf{Type:} script
-
+\begin{itemize}
+\item
+\textbf{Name:} \sphinxcode{cmip5datafinder.py}
+\item
+\textbf{Type:} Python script
+\item
 \textbf{Language:} Python 2.7.13 (Python 2.7+)
-
+\item
 \textbf{Synopsis:} Script that searches for data locally (on a mounted disk specified by \sphinxcode{--datasource}) and optionally also on valid ESGF nodes (using \sphinxcode{--synda}). It builds cache files using the results of the search.
-
-\textbf{Needed python modules:} sys, os, shutil, getopt, re, string, errno, numpy, subprocess, datetime, time
+\item
+\textbf{Needed python modules:} \sphinxcode{sys, os, shutil, getopt, re, string, errno, numpy, subprocess, datetime, time}
+\item
+\textbf{Developer and contact:} Valeriu Predoi, University of Reading - (\href{valeriu.predoi@ncas.ac.uk}{valeriu.predoi@ncas.ac.uk})
+\end{itemize} 
 
 \section*{Introduction and examples}
 
-\sphinxcode{cmip5datafinder.py} is a versatile Python tool that allows building cache files when run on a computer with access to a mounted disk where CMIP5 data is stored under the DRS path system and(/if synda is used) with access to a mounted /sdt/data synda data storage unit and a working synda executable. It requires minimal input from the user, with most of its functionality coded in as options. Below you can find the command-line options that can be used with the script, see Table \ref{command_line}.
+\sphinxcode{cmip5datafinder.py} is a versatile Python tool that allows building cache files when run on a computer with access to a mounted disk where CMIP5 data is stored under the DRS path system and(or if synda is used) with access to a mounted /sdt/data synda data storage unit and a working synda executable. See below for explanation on synda. It requires minimal input from the user, with most of its functionality coded in as options. Below you can find the command-line options that can be used with the script, see Table \ref{command_line}.
 
-The script uses either a parameter file that contains file parameters on each line or user-specified command-line file parameters. Below you can see the workflow based on a single file parameter set:
+The script uses either a parameter file that contains file parameters on each line or user-specified command-line file parameters.
+
+The script is available to download () and comes prepackaged with an example paramater file (\sphinxcode{example.txt}) to illustrate its functionality and so that the user can run the examples listed below.
 
 \begin{table}[htb!]
 \begin{tabular}{ |l|l| }
@@ -113,13 +120,21 @@ The script uses either a parameter file that contains file parameters on each li
 \end{table}
 
 \paragraph{Example 1: parameter file: workflow description}
-(without synda: command) \sphinxcode{python cmip5datafinder.py -p example.txt --verbose --datasource badc}
+(without synda: command:) 
 
-The code will read each line in example.txt; each line represents a set of file parameters that are parsed; the code will look for relevant files only in the datasource ``badc'', cache the files and output a cache file called \sphinxcode{cache\_example.txt-badc} and a directory called \sphinxcode{cache\_files\_badc}. \sphinxcode{cache\_example.txt-badc} contains rows with four elements: filedescriptor (or header), complete/incomplete/missing, completeness percentage, file list. \sphinxcode{cache\_files\_badc} will contain cache files (cache\_ and missing\_) and images describing the file population by model.
+\sphinxcode{python cmip5datafinder.py -p example.txt --verbose --datasource badc}
 
-(with synda: command) \sphinxcode{python cmip5datafinder.py -p example.txt --synda --download --dryrun --verbose --datasource badc}
+The code will read each line in \sphinxcode{example.txt}; each line represents a set of file parameters that are parsed (e.g. CMIP5 MPI-ESM-LR Amon historical r1i1p1 1900 1982 tro3); the code will look for relevant files only in the datasource \sphinxcode{badc}, cache the files and output a cache file called \sphinxcode{cache\_example.txt-badc} and a directory called \sphinxcode{cache\_files\_badc}. \sphinxcode{cache\_example.txt-badc} contains rows with four elements: filedescriptor (or header), level of completeness (\sphinxcode{complete} or \sphinxcode{incomplete} or \sphinxcode{missing}), completeness percentage (a \%.2f float) and the available file list. \sphinxcode{cache\_files\_badc} will contain cache files (cache\_cmip5 and missing\_cache\_cmip5) and images describing the file population by model. An example set of images below:
 
-This case builds up on the previous case: the same search is performed within the ``badc'' datasource, but the \textbf{missing-only} filedescriptors are searched on ESGF nodes via synda. Synda has the capability to complete the incomplete or missing filedescriptors. Synda will first search in the locally-available /sdt/data disk, and cache whatever is needed and found there, and if \sphinxcode{--download} option is specified, synda will go on to search over the remote ESGF servers if files are still needed. \sphinxcode{--download --dryrun} means that synda will search remote ESGF nodes but will not physically download anything found (it will, however, cache it as if it was downloaded but with the field NOT-YET-DOWNLOADED for clarity). 
+\includegraphics[scale=0.5]{overall}
+\includegraphics[scale=0.5]{missing}
+\includegraphics[scale=0.5]{incomplete}
+
+(with synda: command:) 
+
+\sphinxcode{python cmip5datafinder.py -p example.txt --synda --download --dryrun --verbose --datasource badc}
+
+This case builds up on the previous case: the same search is performed within the \sphinxcode{badc} datasource, but the \textbf{missing-only} filedescriptors are searched on ESGF nodes via \textsl{synda} (see \href{https://github.com/Prodiguer/synda}{https://github.com/Prodiguer/synda}). Synda has the capability to complete the incomplete or missing filedescriptors, depending what ESGF servers are listed in its configuration file (we will not discuss this here since that is a system admin issue). Synda will first search in the locally-available locally-mounted \sphinxcode{/sdt/data} disk, and cache whatever is needed and found there, and if (and only if) \sphinxcode{--download} option is specified, synda will go on to search over the remote ESGF servers if files are still needed. \sphinxcode{--download --dryrun} means that synda will search remote ESGF nodes but will not physically download anything found (it will, however, cache it as if it was downloaded but with the field NOT-YET-DOWNLOADED in the cache files for clarity). Synda-only files are stored in caches labelled \sphinxcode{\_synda\_}.
 
 
 \paragraph{Example 2: command-line args: workflow description}
@@ -128,6 +143,7 @@ This case builds up on the previous case: the same search is performed within th
 --verbose}
 Same as above only that the user specifies directly what file they need.
 
+Easy-peasy!
 
 \section*{Main functions}
 
