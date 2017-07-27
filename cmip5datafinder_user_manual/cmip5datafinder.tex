@@ -126,6 +126,7 @@ The script is available to download () and comes prepackaged with an example par
 
 The code will read each line in \sphinxcode{example.txt}; each line represents a set of file parameters that are parsed (e.g. CMIP5 MPI-ESM-LR Amon historical r1i1p1 1900 1982 tro3); the code will look for relevant files only in the datasource \sphinxcode{badc}, cache the files and output a cache file called \sphinxcode{cache\_example.txt-badc} and a directory called \sphinxcode{cache\_files\_badc}. \sphinxcode{cache\_example.txt-badc} contains rows with four elements: filedescriptor (or header), level of completeness (\sphinxcode{complete} or \sphinxcode{incomplete} or \sphinxcode{missing}), completeness percentage (a \%.2f float) and the available file list. \sphinxcode{cache\_files\_badc} will contain cache files (cache\_cmip5 and missing\_cache\_cmip5) and images describing the file population by model. An example set of images below:
 
+\includegraphics[scale=1.0]{cmip5datafinder_flow}
 \includegraphics[scale=0.5]{overall}
 \includegraphics[scale=0.5]{missing}
 \includegraphics[scale=0.5]{incomplete}
